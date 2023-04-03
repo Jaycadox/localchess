@@ -194,7 +194,7 @@ namespace localChess.Chess
             return true;
         }
 
-        public string PrettyPrintPosition(int index)
+        public string PrettyPrintPosition(int index, bool withTypeName = true)
         {
             var (x, y) = GetPos(index);
             var typeName = Board[index] is not null ? Board[index]!.Type.ToString() : "Empty";
@@ -202,7 +202,7 @@ namespace localChess.Chess
             var letter = char.ToString((char)('a' + x));
             var number = 8 - y;
 
-            return $"{letter}{number} ({typeName})";
+            return withTypeName ? $"{letter}{number} ({typeName})" : $"{letter}{number}";
         }
 
         public void OnTick()
@@ -243,6 +243,98 @@ namespace localChess.Chess
 
                 //SelectedIndex = null;
             }
+        }
+
+        public string GetFEN()
+        {
+            string buf = "";
+            for (var y = 0; y < 8; y++)
+            {
+                int numOfEmptyPieces = 0;
+                for (var x = 0; x < 8; x++)
+                {
+                    var piece = Board[GetIndex(x, y)];
+                    if (numOfEmptyPieces != 0 && piece is not null)
+                    {
+                        buf += numOfEmptyPieces;
+                        numOfEmptyPieces = 0;
+                    }
+
+                    if (piece is null)
+                    {
+                        ++numOfEmptyPieces;
+                    }
+                    else
+                    {
+                        var pieceLetter = piece.Type switch
+                        {
+                            PieceType.Pawn => 'p',
+                            PieceType.Rook => 'r',
+                            PieceType.Knight => 'n',
+                            PieceType.Bishop => 'b',
+                            PieceType.Queen => 'q',
+                            PieceType.King => 'k',
+                            _ => throw new Exception("Invalid piece type")
+                        };
+
+                        if (!piece.Black)
+                        {
+                            pieceLetter = char.ToUpper(pieceLetter);
+                        }
+
+                        buf += pieceLetter;
+                    }
+                }
+                if (numOfEmptyPieces != 0)
+                {
+                    buf += numOfEmptyPieces;
+                }
+                buf += "/";
+            }
+
+            buf = buf[..^1];
+            buf += " " + (BlackPlaying ? "b" : "w") + " ";
+
+            if (Board[63]?.Type == PieceType.Rook && Board[63]?.MoveCount == 0 && Board[60]?.Type == PieceType.King && Board[60]?.MoveCount == 0)
+            {
+                buf += "K";
+            }
+
+            if (Board[56]?.Type == PieceType.Rook && Board[56]?.MoveCount == 0 && Board[60]?.Type == PieceType.King && Board[60]?.MoveCount == 0)
+            {
+                buf += "Q";
+            }
+
+            if (Board[7]?.Type == PieceType.Rook && Board[7]?.MoveCount == 0 && Board[4]?.Type == PieceType.King && Board[4]?.MoveCount == 0)
+            {
+                buf += "k";
+            }
+
+            if (Board[0]?.Type == PieceType.Rook && Board[0]?.MoveCount == 0 && Board[4]?.Type == PieceType.King && Board[4]?.MoveCount == 0)
+            {
+                buf += "q";
+            }
+
+            if (buf.EndsWith(" "))
+            {
+                buf += "- ";
+            }
+            else
+            {
+                buf += " ";
+            }
+
+            if (EnPassantIndex is not null)
+            {
+                buf += PrettyPrintPosition(EnPassantIndex.Value, false) + " ";
+            }
+            else
+            {
+                buf += "- ";
+            }
+
+            buf += "0 1";
+            return buf;
         }
 
         public void Render(int x, int y)

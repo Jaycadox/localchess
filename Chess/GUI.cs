@@ -13,6 +13,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using Raylib_CsLo;
 
 namespace localChess.Chess
 {
@@ -549,11 +550,19 @@ namespace localChess.Chess
                 if (ImGui.CollapsingHeader("FEN loader"))
                 {
                     ImGui.InputText("FEN string", ref CurrentFen, 128);
+                    ImGui.SameLine();
                     if (ImGui.Button("Load"))
                     {
                         var game = Game.FromFen(CurrentFen);
                         Program.ActiveGame = game;
                         ActiveGame = game;
+                    }
+
+                    ImGui.Text("Current FEN: " + ActiveGame.GetFEN());
+                    ImGui.SameLine();
+                    if (ImGui.Button("Copy to clipboard"))
+                    {
+                        Raylib.SetClipboardText(ActiveGame.GetFEN());
                     }
                 }
                 
