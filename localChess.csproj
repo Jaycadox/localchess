@@ -34,28 +34,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FParsec" Version="1.1.1" />
-    <PackageReference Include="FSharp.Core" Version="7.0.200" />
-    <PackageReference Include="NAudio" Version="2.1.0" />
     <PackageReference Include="Raylib-cs" Version="4.2.0.1" />
     <PackageReference Include="RayWork.RLImgui" Version="0.1.0" />
     <PackageReference Include="System.Text.Json" Version="7.0.2" />
     <PackageReference Include="System.Windows.Extensions" Version="7.0.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="pgn.Data">
-      <HintPath>Deps\pgn.Data.dll</HintPath>
-    </Reference>
-    <Reference Include="pgn.NET">
-      <HintPath>Deps\pgn.NET.dll</HintPath>
-    </Reference>
-    <Reference Include="pgn.NET.Test">
-      <HintPath>Deps\pgn.NET.Test.dll</HintPath>
-    </Reference>
-    <Reference Include="pgn.Parse">
-      <HintPath>Deps\pgn.Parse.dll</HintPath>
-    </Reference>
   </ItemGroup>
 
   <ItemGroup>

@@ -1,7 +1,5 @@
 ﻿using Raylib_cs;
-using ilf;
 using localChess.Renderer;
-using ilf.pgn.Exceptions;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Runtime.CompilerServices;
@@ -21,10 +19,6 @@ namespace localChess.Chess
         public EngineBridge.EngineType EngineType = EngineBridge.EngineType.Alpaca;
 
         public bool BlackPlaying { get; set; }
-        public ilf.pgn.Data.Game? PgnGame { get; set; }
-        public int MoveIndex { get; set; }
-        public int GameIndex { get; set; }
-        public List<ilf.pgn.Data.Game> PgnGames = new();
         public int? EnPassantIndex { get; set; }
         public bool DidJustEnPassant { get; set; }
         public event EventHandler<Move> OnMove;
