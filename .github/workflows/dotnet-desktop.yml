@@ -26,10 +26,11 @@ jobs:
     - name: Remove PDB files
       run: |
         Remove-Item -Path "bin/Release/net7.0/win-x64/publish/*.pdb"
-    - name: Zip artifacts
-      uses: montudor/action-zip@v1
-      with:
-        args: zip -qq -r localChess.zip bin/Release/net7.0/win-x64/publish/
+    - name: Zip build output
+      run: |
+        $zipFile = "localChess.zip"
+        Compress-Archive -Path "bin/Release/net7.0/win-x64/publish/*" -DestinationPath $zipFile
+      shell: powershell
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
