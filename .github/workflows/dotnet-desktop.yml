@@ -23,11 +23,13 @@ jobs:
       run: dotnet restore --packages .nuget --runtime win-x64
     - name: Build and publish app
       run: msbuild localChess.sln /t:Publish /p:PublishSingleFile=true /p:PublishTrimmed=true /p:SelfContained=true /p:RuntimeIdentifier=win-x64 /p:Configuration=Release
-    - name: Zip artifacts
+    - name: Remove PDB files
       run: |
-        $Exclude = @('*.pdb')
-        Compress-Archive -Path bin/Release/net7.0/publish/* -DestinationPath localChess.zip -CompressionLevel Optimal -Exclude $Exclude
-      shell: powershell
+        Remove-Item -Path "bin/Release/net7.0/publish/*.pdb"
+    - name: Zip artifacts
+      uses: montudor/action-zip@v1.2.0
+      with:
+        args: 'a localChess.zip bin/Release/net7.0/publish/*'
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
