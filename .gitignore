@@ -13,6 +13,7 @@ mono_crash.*
 
 /JSON
 /Deps
+/.nuget
 
 # Build results
 [Dd]ebug/
