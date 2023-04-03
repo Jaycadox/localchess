@@ -18,6 +18,8 @@ jobs:
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
         restore-keys: ${{ runner.os }}-nuget-
     - name: Restore NuGet packages
+      run: nuget restore
+    - name: Restore dotnet project
       run: dotnet restore --packages .nuget --runtime win-x64
     - name: Build and publish app
       run: msbuild localChess.sln /t:Publish /p:PublishSingleFile=true /p:PublishTrimmed=true /p:SelfContained=true /p:RuntimeIdentifier=win-x64 /p:Configuration=Release
