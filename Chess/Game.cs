@@ -17,7 +17,9 @@ namespace localChess.Chess
         public int? SelectedIndex;
         public List<int>? LegalMoves;
         public List<Flags>? FlagsList;
-        private Dictionary<int, Action<Game>>? _specialMoves;
+        public Dictionary<int, Action<Game>>? SpecialMoves;
+        public EngineBridge.EngineType EngineType = EngineBridge.EngineType.Alpaca;
+
         public bool BlackPlaying { get; set; }
         public ilf.pgn.Data.Game? PgnGame { get; set; }
         public int MoveIndex { get; set; }
@@ -27,8 +29,7 @@ namespace localChess.Chess
         public bool DidJustEnPassant { get; set; }
         public event EventHandler<Move> OnMove;
         public bool DidJustPromote { get; set; }
-
-        public static bool UseBullEngine = false;
+        public long LastElapsedTicks = 0;
 
         public static Game FromFen(string fen)
         {
@@ -101,7 +102,7 @@ namespace localChess.Chess
                 Board = Board.Select(a => a?.Clone()).ToArray(),
                 BlackPlaying = BlackPlaying,
                 FlagsList = FlagsList,
-                _specialMoves = _specialMoves,
+                SpecialMoves = SpecialMoves,
                 EnPassantIndex = EnPassantIndex,
                 DidJustEnPassant = DidJustEnPassant,
             };
@@ -176,134 +177,19 @@ namespace localChess.Chess
             if (move.FromIndex == move.ToIndex || Board[move.FromIndex] is null || Board[move.FromIndex]!.Black != BlackPlaying || !move.Valid)
             {
                 LegalMoves = null;
-                _specialMoves = null;
+                SpecialMoves = null;
                 return false;
             }
 
-            if (FlagsList is not null && (FlagsList.Contains(Chess.Flags.WhiteInCheckmate) || FlagsList.Contains(Chess.Flags.BlackInCheckmate)))
+            if (FlagsList is not null && (FlagsList.Contains(Flags.WhiteInCheckmate) || FlagsList.Contains(Flags.BlackInCheckmate)))
             {
                 return false;
             }
 
-            if (UseBullEngine)
-            {
-                var nb = Board.Select(a => a?.Clone()).ToArray();
-                for (var i = 0; i < 1; i++)
-                {
-                    Board = nb.Select(a => a?.Clone()).ToArray();
-                    var result = BullEngine.GetLegalMovesFor((ushort)move.FromIndex, Board, BlackPlaying, EnPassantIndex);
-
-                    foreach (var mv in result.moves)
-                    {
-                        var (pMove, moveList) = mv;
-                        if (move.FromIndex != pMove.FromIndex || move.ToIndex != pMove.ToIndex) continue;
-                        if (Board[move.FromIndex].Type == PieceType.Pawn && Math.Abs(move.FromIndex - move.ToIndex) > 10)
-                        {
-                            EnPassantIndex = move.ToIndex;
-                        }
-                        else
-                        {
-                            EnPassantIndex = null;
-                        }
-
-                        if (Board[move.FromIndex].Type == PieceType.Pawn && (move.ToIndex < 8 || MoveIndex > 56))
-                        {
-                            Board[move.FromIndex].Type = move.PromoteInto;
-                        }
-
-                        foreach (var mv1 in moveList)
-                        {
-                            Board[mv1.FromIndex]!.MoveCount++;
-                            Board[mv1.ToIndex] = Board[mv1.FromIndex];
-                            Board[mv1.FromIndex] = null;
-                        }
-
-                        LegalMoves = null;
-                        _specialMoves = null;
-                        BlackPlaying = !BlackPlaying;
-                        FlagsList = null;
-                        break;
-                    }
-
-                    result = BullEngine.GetLegalMovesFor((ushort)move.FromIndex, Board, BlackPlaying, null, true);
-                    if (result.flags is not null)
-                    {
-                        if ((result.flags & BullEngineFlags.Black) != 0)
-                        {
-                            FlagsList = new() { Flags.BlackInCheck };
-                            if ((result.flags & BullEngineFlags.Checkmate) != 0)
-                            {
-                                FlagsList.Add(Flags.BlackInCheckmate);
-                            }
-                        }
-                        else
-                        {
-                            FlagsList = new() { Flags.WhiteInCheck };
-                            if ((result.flags & BullEngineFlags.Checkmate) != 0)
-                            {
-                                FlagsList.Add(Flags.WhiteInCheckmate);
-                            }
-                        }
-                    }
-                }
-                
-            }
-            else
-            {
-                var result = Engine.GetLegalMovesFor(move.FromIndex, this, true, move.PromoteInto, EnPassantIndex);
-                _specialMoves = result.special;
-                LegalMoves = result.moves;
-
-                if (LegalMoves is not null && !LegalMoves.Contains(move.ToIndex))
-                {
-                    LegalMoves = null;
-                    _specialMoves = null;
-                    Console.WriteLine("ENGINE: Illegal move. " + PrettyPrintPosition(move.FromIndex) + " -> " + PrettyPrintPosition(move.ToIndex));
-                    return false;
-                }
-
-                if (Board[move.FromIndex] is not null)
-                    Board[move.FromIndex]!.MoveCount++;
-
-                if (_specialMoves is not null && _specialMoves.ContainsKey(move.ToIndex) &&
-                    (result.hooked is null || !result.hooked.Contains(move.ToIndex)))
-                {
-                    _specialMoves[move.ToIndex](this);
-                }
-                else
-                {
-                    Board[move.ToIndex] = Board[move.FromIndex];
-                    Board[move.FromIndex] = null;
-                    if (result.hooked is not null && result.hooked.Contains(move.ToIndex) && _specialMoves.ContainsKey(move.ToIndex))
-                    {
-                        _specialMoves[move.ToIndex](this);
-                    }
-                }
-                move.WasPromoted = DidJustPromote;
-
-
-
-                if (!DidJustEnPassant)
-                {
-                    EnPassantIndex = null;
-                }
-                else
-                {
-                    DidJustEnPassant = false;
-                }
-
-
-                result = Engine.GetLegalMovesFor(move.ToIndex, this, true, move.PromoteInto, EnPassantIndex);
-                LegalMoves = null;
-                _specialMoves = null;
-                FlagsList = result.flags;
-                BlackPlaying = !BlackPlaying;
-
-            }
+            EngineBridge.PerformMove(this, move, EngineType);
 
             stopwatch.Stop();
-            //double elapsedNanoSeconds = stopwatch.ElapsedTicks * (1000000000.0 / (float)Stopwatch.Frequency);
-            //Console.WriteLine($"Elapsed time: {elapsedNanoSeconds} ns");
+            LastElapsedTicks = stopwatch.ElapsedTicks;
             OnMove?.Invoke(this, move);
             return true;
         }
@@ -326,45 +212,7 @@ namespace localChess.Chess
                 var (x, y) = GetMouseBoardPosition().Value;
                 if (At(x, y) is not null && At(x, y)!.Black == BlackPlaying)
                 {
-                    if (UseBullEngine)
-                    {
-                        var result = BullEngine.GetLegalMovesFor((ushort)GetIndex(x, y), Board, BlackPlaying, EnPassantIndex);
-                        if (result.moves.Count != 0)
-                        {
-                            LegalMoves = result.moves.Select((e) => e.Item1.ToIndex).ToList();
-                            SelectedIndex = GetIndex(x, y);
-                        }
-                        if (result.flags is not null)
-                        {
-                            if ((result.flags & BullEngineFlags.Black) != 0)
-                            {
-                                FlagsList = new() { Flags.BlackInCheck };
-                                if ((result.flags & BullEngineFlags.Checkmate) != 0)
-                                {
-                                    FlagsList.Add(Flags.BlackInCheckmate);
-                                }
-                            }
-                            else
-                            {
-                                FlagsList = new() { Flags.WhiteInCheck };
-                                if ((result.flags & BullEngineFlags.Checkmate) != 0)
-                                {
-                                    FlagsList.Add(Flags.WhiteInCheckmate);
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        var result = Engine.GetLegalMovesFor(GetIndex(x, y), this, true, PieceType.Queen, EnPassantIndex);
-                        if (result.moves.Count != 0)
-                        {
-                            FlagsList = result.flags;
-                            LegalMoves = result.moves;
-                            _specialMoves = result.special;
-                            SelectedIndex = GetIndex(x, y);
-                        }
-                    }
+                    EngineBridge.GetMoves(this, GetIndex(x, y), EngineType);
                 }
                 
             }
@@ -390,7 +238,7 @@ namespace localChess.Chess
                         Console.WriteLine("Illegal move!");
                     }
                     //LegalMoves = null;
-                    //_specialMoves = null;
+                    //SpecialMoves = null;
                 }
 
                 //SelectedIndex = null;

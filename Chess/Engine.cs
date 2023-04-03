@@ -21,7 +21,6 @@ namespace localChess.Chess
 
     internal class ColourHandler
     {
-        
         public bool Check { get; set; }
         public bool Checkmate { get; set; }
         public List<int>? CheckForcedSpaces { get; set; }

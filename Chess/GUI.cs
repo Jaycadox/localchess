@@ -72,6 +72,14 @@ namespace localChess.Chess
         [JsonInclude]
         public string CurrentFen = "";
 
+        [JsonIgnore]
+        public List<EngineBridge.EngineType> EngineTypes = Enum.GetValues(typeof(EngineBridge.EngineType)).Cast<EngineBridge.EngineType>().ToList();
+
+        [JsonIgnore] public List<string> EngineNames = new();
+
+        [JsonInclude]
+        public int SelectedEngine = 0;
+
         private long _frameCount = 0;
 
         public void SaveToJson()
@@ -95,7 +103,7 @@ namespace localChess.Chess
                 if (board[i] is null) continue;
                 if (board[i].Black != selected.BlackPlaying) continue;
 
-                if (!Game.UseBullEngine)
+                if (ActiveGame.EngineType == EngineBridge.EngineType.Bull)
                 {
                     var intMoves = Engine.GetLegalMovesFor(i, selected, true, PieceType.Queen, selected.EnPassantIndex);
                     List<Move> moves = new();
@@ -240,6 +248,7 @@ namespace localChess.Chess
 
         public void Init()
         {
+            EngineNames = EngineTypes.Select(e => e.ToString()).ToList();
             if (File.Exists("C:\\localChess\\stockfish_15.1_win_x64_avx2\\stockfish-windows-2022-x86-64-avx2.exe"))
             {
                 Path = "C:\\localChess\\stockfish_15.1_win_x64_avx2\\stockfish-windows-2022-x86-64-avx2.exe";
@@ -383,7 +392,15 @@ namespace localChess.Chess
                 ImGui.EndGroup();
                 ImGui.GetBackgroundDrawList().AddRectFilled(ImGui.GetItemRectMin(), ImGui.GetItemRectMax(), ImGui.ColorConvertFloat4ToU32(new Vector4(0.1f, 0.1f, 0.1f, 1)));
                 ImGui.Separator();
-                ImGui.Checkbox("[Beta] [Internal] Use Bull engine", ref Game.UseBullEngine);
+
+                if (ImGui.CollapsingHeader("Internal engine"))
+                {
+                    ImGui.ListBox("Internal engine", ref SelectedEngine, EngineNames.ToArray(), EngineNames.Count);
+                    ActiveGame.EngineType = EngineTypes[SelectedEngine];
+                    ImGui.TextWrapped("Engine description: " + EngineBridge.GetDescription(ActiveGame.EngineType));
+                    ImGui.Text("Last engine time: " + ActiveGame.LastElapsedTicks + " ticks.");
+                }
+
                 ImGui.Separator();
                 if (ImGui.CollapsingHeader("Stockfish", ImGuiTreeNodeFlags.DefaultOpen))
                 {
@@ -529,53 +546,63 @@ namespace localChess.Chess
                     }
                 }
                 ImGui.Separator();
-                ImGui.Text("FEN loader");
-                ImGui.InputText("FEN string", ref CurrentFen, 128);
-                if (ImGui.Button("Load"))
+                if (ImGui.CollapsingHeader("FEN loader"))
                 {
-                    var game = Game.FromFen(CurrentFen);
-                    Program.ActiveGame = game;
-                    ActiveGame = game;
-                }
-                ImGui.Separator();
-                ImGui.Text("[Debug] Move checker");
-                ImGui.SliderInt("Check depth", ref CheckDepth, 0, 20);
-
-                if (ImGui.Button("Check"))
-                {
-                    Console.WriteLine("Depth: " + CheckDepth + ", Moves: " + CountMoves(CheckDepth, CheckDepth, ActiveGame.Copy()));
-                }
-                ImGui.Separator();
-
-                ImGui.Text("Move history");
-                if (ImGui.BeginTable("movehistory", 3))
-                {
-                    ImGui.TableHeadersRow();
-                    ImGui.TableSetColumnIndex(0);
-                    ImGui.Text("Move #");
-                    ImGui.TableSetColumnIndex(1);
-
-                    ImGui.Text("Colour");
-                    ImGui.TableSetColumnIndex(2);
-
-                    ImGui.Text("UCI");
-                    bool white = true;
-                    int count = 1;
-                    foreach (var move in _moveList)
+                    ImGui.InputText("FEN string", ref CurrentFen, 128);
+                    if (ImGui.Button("Load"))
                     {
-                        ImGui.TableNextRow();
-                        ImGui.TableSetColumnIndex(0);
-                        ImGui.Text(count + "");
-                        ImGui.TableSetColumnIndex(1);
-                        ImGui.Text(white ? "White" : "Black");
-                        ImGui.TableSetColumnIndex(2);
-                        ImGui.Text(move);
-                        white = !white;
-                        count++;
+                        var game = Game.FromFen(CurrentFen);
+                        Program.ActiveGame = game;
+                        ActiveGame = game;
                     }
                 }
+                
+                ImGui.Separator();
+                if (ImGui.CollapsingHeader("Move checker / engine tester"))
+                {
+                    ImGui.SliderInt("Check depth", ref CheckDepth, 0, 20);
+                    if (ImGui.Button("Check"))
+                    {
+                        Console.WriteLine("Depth: " + CheckDepth + ", Moves: " + CountMoves(CheckDepth, CheckDepth, ActiveGame.Copy()));
+                    }
+                }
+                
+                ImGui.Separator();
 
-                ImGui.EndTable();
+                if (ImGui.CollapsingHeader("Move history"))
+                {
+                    if (ImGui.BeginTable("movehistory", 3))
+                    {
+                        ImGui.TableHeadersRow();
+                        ImGui.TableSetColumnIndex(0);
+                        ImGui.Text("Move #");
+                        ImGui.TableSetColumnIndex(1);
+
+                        ImGui.Text("Colour");
+                        ImGui.TableSetColumnIndex(2);
+
+                        ImGui.Text("UCI");
+                        bool white = true;
+                        int count = 1;
+                        foreach (var move in _moveList)
+                        {
+                            ImGui.TableNextRow();
+                            ImGui.TableSetColumnIndex(0);
+                            ImGui.Text(count + "");
+                            ImGui.TableSetColumnIndex(1);
+                            ImGui.Text(white ? "White" : "Black");
+                            ImGui.TableSetColumnIndex(2);
+                            ImGui.Text(move);
+                            white = !white;
+                            count++;
+                        }
+                    }
+                    ImGui.EndTable();
+                }
+
+                
+
+                
             }
             ImGui.PopStyleColor();
 
