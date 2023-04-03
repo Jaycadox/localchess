@@ -70,8 +70,12 @@ namespace localChess.Chess
         public bool UseSkillLevel = false;
         [JsonInclude]
         public int CheckDepth = 6;
+
         [JsonInclude]
         public string CurrentFen = "";
+
+        [JsonInclude]
+        public bool ShowConsole = false;
 
         [JsonIgnore]
         public List<EngineBridge.EngineType> EngineTypes = Enum.GetValues(typeof(EngineBridge.EngineType)).Cast<EngineBridge.EngineType>().ToList();
@@ -609,11 +613,13 @@ namespace localChess.Chess
                     ImGui.EndTable();
                 }
 
-                
-
-                
             }
             ImGui.PopStyleColor();
+
+            if (ImGui.Checkbox("Show console", ref ShowConsole))
+            {
+                Program.ShowWindow(Program.GetConsoleWindow(), ShowConsole ? Program.SW_SHOW : Program.SW_HIDE);
+            }
 
             if (ShowEvalBar)
             {
