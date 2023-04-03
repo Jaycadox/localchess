@@ -1,0 +1,33 @@
+name: Build and publish .NET app
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup MSBuild path
+      uses: microsoft/setup-msbuild@v1.0.0
+    - name: Cache dependencies
+      uses: actions/cache@v2
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: ${{ runner.os }}-nuget-
+    - name: Restore NuGet packages
+      run: nuget restore
+    - name: Build and publish app
+      run: msbuild localChess.sln /t:Publish /p:PublishSingleFile=true /p:PublishTrimmed=true /p:SelfContained=true /p:RuntimeIdentifier=win-x64 /p:Configuration=Release
+    - name: Zip artifacts
+      run: |
+        $Exclude = @('*.pdb')
+        Compress-Archive -Path bin/Release/net7.0/publish/* -DestinationPath localChess.zip -CompressionLevel Optimal -Exclude $Exclude
+      shell: powershell
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: localChess
+        path: localChess.zip
