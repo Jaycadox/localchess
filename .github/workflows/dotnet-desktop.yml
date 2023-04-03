@@ -22,7 +22,7 @@ jobs:
     - name: Restore dotnet project
       run: dotnet restore --packages .nuget --runtime win-x64
     - name: Build and publish app
-      run: msbuild localChess.sln /t:Publish /p:PublishSingleFile=true /p:PublishTrimmed=true /p:SelfContained=true /p:RuntimeIdentifier=win-x64 /p:Configuration=Release
+      run: msbuild localChess.sln /t:Publish /p:PublishSingleFile=true /p:SelfContained=false /p:RuntimeIdentifier=win-x64 /p:Configuration=Release /p:PublishReadyToRun=false
     - name: Remove PDB files
       run: |
         Remove-Item -Path "bin/Release/net7.0/win-x64/publish/*.pdb"
