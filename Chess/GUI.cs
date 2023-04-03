@@ -95,72 +95,118 @@ namespace localChess.Chess
                 if (board[i] is null) continue;
                 if (board[i].Black != selected.BlackPlaying) continue;
 
-                var intMoves = Engine.GetLegalMovesFor(i, selected, true, PieceType.Queen, selected.EnPassantIndex);
-                List<Move> moves = new();
-                foreach (var move in intMoves.moves)
+                if (!Game.UseBullEngine)
                 {
-                    if (board[i].Type == PieceType.Pawn && Game.GetPos(move).y is 0 or 7)
+                    var intMoves = Engine.GetLegalMovesFor(i, selected, true, PieceType.Queen, selected.EnPassantIndex);
+                    List<Move> moves = new();
+                    foreach (var move in intMoves.moves)
                     {
-                        moves.Add(new Move(i, move)
+                        if (board[i].Type == PieceType.Pawn && Game.GetPos(move).y is 0 or 7)
                         {
-                            PromoteInto = PieceType.Queen
-                        });
-                        moves.Add(new Move(i, move)
+                            moves.Add(new Move(i, move)
+                            {
+                                PromoteInto = PieceType.Queen
+                            });
+                            moves.Add(new Move(i, move)
+                            {
+                                PromoteInto = PieceType.Rook
+                            });
+                            moves.Add(new Move(i, move)
+                            {
+                                PromoteInto = PieceType.Knight
+                            });
+                            moves.Add(new Move(i, move)
+                            {
+                                PromoteInto = PieceType.Bishop
+                            });
+                        }
+                        else
                         {
-                            PromoteInto = PieceType.Rook
-                        });
-                        moves.Add(new Move(i, move)
+                            moves.Add(new Move(i, move));
+                        }
+                    }
+
+                    if (depth == maxDepth)
+                    {
+                        List<Thread> threads = new List<Thread>();
+                        foreach (var move in moves)
                         {
-                            PromoteInto = PieceType.Knight
-                        });
-                        moves.Add(new Move(i, move)
+                            var game = selected.Copy();
+                            if (!game.PerformMove(move)) continue;
+
+                            var thread = new Thread(() =>
+                            {
+                                var moveCount = CountMoves(depth - 1, maxDepth, game);
+                                numPositions += moveCount;
+                                Console.WriteLine(move.ToUCI() + ": " + moveCount);
+                            })
+                            {
+                                IsBackground = true
+                            };
+                            thread.Start();
+                            threads.Add(thread);
+                        }
+
+                        foreach (var thread in threads)
                         {
-                            PromoteInto = PieceType.Bishop
-                        });
+                            thread.Join();
+                        }
                     }
                     else
                     {
-                        moves.Add(new Move(i, move));
-                    }
-                }
-
-                if (depth == maxDepth)
-                {
-                    List<Thread> threads = new List<Thread>();
-                    foreach (var move in moves)
-                    {
-                        var game = selected.Copy();
-                        if (!game.PerformMove(move)) continue;
-
-                        var thread = new Thread(() =>
+                        foreach (var move in moves)
                         {
-                            var moveCount = CountMoves(depth - 1, maxDepth, game);
-                            numPositions += moveCount;
-                            Console.WriteLine(move.ToUCI() + ": " + moveCount);
-                        })
-                        {
-                            IsBackground = true
-                        };
-                        thread.Start();
-                        threads.Add(thread);
-                    }
-
-                    foreach (var thread in threads)
-                    {
-                        thread.Join();
+                            var game = selected.Copy();
+                            if (game.PerformMove(move))
+                            {
+                                numPositions += CountMoves(depth - 1, maxDepth, game);
+                            }
+                        }
                     }
                 }
                 else
                 {
-                    foreach (var move in moves)
+                    var intMoves = BullEngine.GetLegalMovesFor((ushort)i, selected.Board, true, selected.EnPassantIndex).moves;
+                    if (depth == maxDepth)
                     {
-                        var game = selected.Copy();
-                        if (game.PerformMove(move))
+                        List<Thread> threads = new List<Thread>();
+                        foreach (var mv in intMoves)
                         {
-                            numPositions += CountMoves(depth - 1, maxDepth, game);
+                            var move = mv.Item1;
+                            var game = selected.Copy();
+                            if (!game.PerformMove(move)) continue;
+
+                            var thread = new Thread(() =>
+                            {
+                                var moveCount = CountMoves(depth - 1, maxDepth, game);
+                                numPositions += moveCount;
+                                Console.WriteLine(move.ToUCI() + ": " + moveCount);
+                            })
+                            {
+                                IsBackground = true
+                            };
+                            thread.Start();
+                            threads.Add(thread);
+                        }
+
+                        foreach (var thread in threads)
+                        {
+                            thread.Join();
+                        }
+                    }
+                    else
+                    {
+                        foreach (var move in intMoves)
+                        {
+                            var game = selected.Copy();
+                            if (game.PerformMove(move.Item1))
+                            {
+                                numPositions += CountMoves(depth - 1, maxDepth, game);
+                            }
                         }
                     }
                 }
+                
 
             }
 
@@ -336,6 +382,8 @@ namespace localChess.Chess
                 
                 ImGui.EndGroup();
                 ImGui.GetBackgroundDrawList().AddRectFilled(ImGui.GetItemRectMin(), ImGui.GetItemRectMax(), ImGui.ColorConvertFloat4ToU32(new Vector4(0.1f, 0.1f, 0.1f, 1)));
+                ImGui.Separator();
+                ImGui.Checkbox("[Beta] [Internal] Use Bull engine", ref Game.UseBullEngine);
                 ImGui.Separator();
                 if (ImGui.CollapsingHeader("Stockfish", ImGuiTreeNodeFlags.DefaultOpen))
                 {
