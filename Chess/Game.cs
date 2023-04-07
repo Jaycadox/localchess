@@ -14,6 +14,8 @@ namespace localChess.Chess
         public List<int>? LegalMoves;
         public List<Flags>? FlagsList;
         public Dictionary<int, Action<Game>>? SpecialMoves;
+        public int FullMoves = 1;
+        public int HalfMoveClock;
         public EngineBridge.EngineType EngineType = EngineBridge.EngineType.Alpaca;
         public int DisplaySize = 720;
         public bool BlackPlaying { get; set; }
@@ -320,7 +322,7 @@ namespace localChess.Chess
                 buf += "- ";
             }
 
-            buf += "0 1";
+            buf += HalfMoveClock + " " + FullMoves;
             return buf;
         }
 

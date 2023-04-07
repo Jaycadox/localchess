@@ -90,8 +90,16 @@
                         return;
                     }
 
+                    ++game.HalfMoveClock;
                     if (game.Board[move.FromIndex] is not null)
+                    {
                         game.Board[move.FromIndex]!.MoveCount++;
+                        if (game.Board[move.FromIndex]!.Type == PieceType.Pawn)
+                        {
+                            game.HalfMoveClock = 0;
+                        }
+                    }
+                        
 
                     if (game.SpecialMoves is not null && game.SpecialMoves.ContainsKey(move.ToIndex) &&
                         (result.hooked is null || !result.hooked.Contains(move.ToIndex)))
@@ -126,6 +134,10 @@
                     game.SpecialMoves = null;
                     game.FlagsList = result.flags;
                     game.BlackPlaying = !game.BlackPlaying;
+                    if (!game.BlackPlaying)
+                    {
+                        ++game.FullMoves;
+                    }
                     break;
                 }
                 case EngineType.Bull:
@@ -149,10 +161,15 @@
                                 game.EnPassantIndex = null;
                             }
 
-                            if (game.Board[move.FromIndex]!.Type == PieceType.Pawn && move.ToIndex is < 8 or >= 56)
+                            ++game.HalfMoveClock;
+                            if (game.Board[move.FromIndex]!.Type == PieceType.Pawn)
                             {
-                                game.Board[move.FromIndex]!.Type = move.PromoteInto;
-                                move.WasPromoted = true;
+                                game.HalfMoveClock = 0;
+                                if (move.ToIndex is < 8 or >= 56)
+                                {
+                                    game.Board[move.FromIndex]!.Type = move.PromoteInto;
+                                    move.WasPromoted = true;
+                                }
                             }
 
                             foreach (var mv1 in moveList)
@@ -165,6 +182,10 @@
                             game.LegalMoves = null;
                             game.SpecialMoves = null;
                             game.BlackPlaying = !game.BlackPlaying;
+                            if (!game.BlackPlaying)
+                            {
+                                ++game.FullMoves;
+                            }
                             game.FlagsList = null;
                             break;
                         }
