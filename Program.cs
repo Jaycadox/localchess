@@ -14,7 +14,7 @@ namespace localChess
     internal class Program
     {
         public static Game? ActiveGame = null;
-        public static GUI? Gui = null;
+        public static Gui? Gui = null;
 
         public static void Reset()
         {
@@ -25,7 +25,7 @@ namespace localChess
             
             UCIEngine.StockfishProcess = null;
             ActiveGame = new();
-            Gui = GUI.LoadFromJson();
+            Gui = Gui.LoadFromJson();
             Gui.ActiveGame = ActiveGame;
 
             Gui.Init();
@@ -66,7 +66,7 @@ namespace localChess
                 {
                     Raylib.EndDrawing();
                     ActiveGame = new Game();
-                    Gui = GUI.LoadFromJson();
+                    Gui = Gui.LoadFromJson();
                     if (!Gui.ShowConsole)
                     {
                         ShowWindow(Program.GetConsoleWindow(), Program.SW_HIDE);

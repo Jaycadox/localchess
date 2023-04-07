@@ -1,10 +1,7 @@
 ﻿using Raylib_cs;
 using localChess.Renderer;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
 using System.Runtime.CompilerServices;
 using System.Numerics;
-using System.Threading.Tasks.Sources;
 using System.Diagnostics;
 using localChess.Assets;
 
@@ -22,11 +19,11 @@ namespace localChess.Chess
         public bool BlackPlaying { get; set; }
         public int? EnPassantIndex { get; set; }
         public bool DidJustEnPassant { get; set; }
-        public event EventHandler<Move> OnMove;
+        public event EventHandler<Move>? OnMove;
         public bool DidJustPromote { get; set; }
-        public long LastElapsedTicks = 0;
+        public long LastElapsedTicks;
 
-        private Texture2D BoardTexture = Raylib.LoadTexture(AssetLoader.GetPath("Board.png"));
+        private static readonly Texture2D BoardTexture = Raylib.LoadTexture(AssetLoader.GetPath("Board.png"));
 
         public static Game FromFen(string fen)
         {
@@ -188,7 +185,7 @@ namespace localChess.Chess
 
             stopwatch.Stop();
             LastElapsedTicks = stopwatch.ElapsedTicks;
-            OnMove.Invoke(this, move);
+            OnMove?.Invoke(this, move);
             return true;
         }
 
@@ -205,9 +202,10 @@ namespace localChess.Chess
 
         public void OnTick()
         {
-            if (Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_LEFT) && GetMouseBoardPosition().HasValue)
+            var mbPos = GetMouseBoardPosition();
+            if (Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_LEFT) && mbPos.HasValue)
             {
-                var (x, y) = GetMouseBoardPosition().Value;
+                var (x, y) = mbPos.Value;
                 if (At(x, y) is not null && At(x, y)!.Black == BlackPlaying)
                 {
                     EngineBridge.GetMoves(this, GetIndex(x, y), EngineType);
@@ -215,31 +213,31 @@ namespace localChess.Chess
                 
             }
 
-            if ((Raylib.IsMouseButtonReleased(MouseButton.MOUSE_BUTTON_LEFT) || Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_LEFT)) && GetMouseBoardPosition().HasValue)
+            if ((Raylib.IsMouseButtonReleased(MouseButton.MOUSE_BUTTON_LEFT) ||
+                 Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_LEFT)) &&
+                mbPos.HasValue)
             {
-                if (SelectedIndex is not null)
-                {
-                    var (x, y) = GetMouseBoardPosition().Value;
+                if (SelectedIndex is null) return;
+                var (x, y) = mbPos.Value;
 
-                    if ((LegalMoves is not null && LegalMoves.Contains(GetIndex(x, y))) 
-                        && !PerformMove(new Move(SelectedIndex.Value, GetIndex(x, y))))
-                    {
-                        Console.WriteLine("Illegal move!");
-                    }
-                    //LegalMoves = null;
-                    //SpecialMoves = null;
+                if ((LegalMoves is not null && LegalMoves.Contains(GetIndex(x, y))) 
+                    && !PerformMove(new Move(SelectedIndex.Value, GetIndex(x, y))))
+                {
+                    Console.WriteLine(@"Illegal move!");
                 }
+                //LegalMoves = null;
+                //SpecialMoves = null;
 
                 //SelectedIndex = null;
             }
         }
 
-        public string GetFEN()
+        public string GetFen()
         {
-            string buf = "";
+            var buf = "";
             for (var y = 0; y < 8; y++)
             {
-                int numOfEmptyPieces = 0;
+                var numOfEmptyPieces = 0;
                 for (var x = 0; x < 8; x++)
                 {
                     var piece = Board[GetIndex(x, y)];
@@ -336,7 +334,8 @@ namespace localChess.Chess
             {
                 for (var py = 0; py < 8; py++)
                 {
-                    if(SelectedIndex == GetIndex(px, py) && Raylib.IsMouseButtonDown(MouseButton.MOUSE_BUTTON_LEFT) && GetMouseBoardPosition().HasValue)
+                    var mbPos = GetMouseBoardPosition();
+                    if (SelectedIndex == GetIndex(px, py) && Raylib.IsMouseButtonDown(MouseButton.MOUSE_BUTTON_LEFT) && mbPos.HasValue)
                     {
                         continue;
                     }
@@ -346,20 +345,20 @@ namespace localChess.Chess
                     {
                         if (piece.Type == PieceType.King)
                         {
-                            if (FlagsList.Contains(Chess.Flags.WhiteInCheck) && !piece.Black)
+                            if (FlagsList.Contains(Flags.WhiteInCheck) && !piece.Black)
                             {
                                 Raylib.DrawRectangle(px * pieceSize + x, py * pieceSize + y, pieceSize, pieceSize, new Color(255, 128, 128, 255));
                             }
 
-                            if (FlagsList.Contains(Chess.Flags.BlackInCheck) && piece.Black)
+                            if (FlagsList.Contains(Flags.BlackInCheck) && piece.Black)
                             {
                                 Raylib.DrawRectangle(px * pieceSize + x, py * pieceSize + y, pieceSize, pieceSize, new Color(255, 128, 128, 255));
                             }
-                            if (FlagsList.Contains(item: Chess.Flags.WhiteInCheckmate) && !piece.Black)
+                            if (FlagsList.Contains(item: Flags.WhiteInCheckmate) && !piece.Black)
                             {
                                 Raylib.DrawRectangle(px * pieceSize + x, py * pieceSize + y, pieceSize, pieceSize, new Color(255, 0, 0, 255));
                             }
-                            if (FlagsList.Contains(Chess.Flags.BlackInCheckmate) && piece.Black)
+                            if (FlagsList.Contains(Flags.BlackInCheckmate) && piece.Black)
                             {
                                 Raylib.DrawRectangle(px * pieceSize + x, py * pieceSize + y, pieceSize, pieceSize, new Color(255, 0, 0, 255));
                             }

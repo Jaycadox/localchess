@@ -1,31 +1,18 @@
-﻿using ImGuiNET;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.IO.Compression;
-using System.Linq;
+﻿using System.IO.Compression;
 using System.Net;
 using System.Numerics;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
+using ImGuiNET;
 using Raylib_CsLo;
 
 namespace localChess.Chess
 {
-    internal class GUI
+    internal class Gui
     {
         [JsonIgnore]
-        public Game ActiveGame { get; set; }
-
-        [JsonIgnore] 
-        private int _lastDepth = 0;
-        [JsonIgnore]
-        private int _lastPV = 0;
+        public Game? ActiveGame { get; set; }
 
         [JsonInclude]
         public bool Opened = true;
@@ -33,12 +20,11 @@ namespace localChess.Chess
         public bool GameInfoOpened = true;
 
         [JsonIgnore]
-        private float _currentEval = 0.0f;
+        private float _currentEval;
 
         private string _opening = "...";
-        private HttpClient _client;
+        private HttpClient? _client;
         private readonly List<string> _moveList = new();
-        private readonly List<Game> _undoHistory = new();
         private List<List<string>> _bestMove = new();
         private string _eval = "0.0";
 
@@ -59,15 +45,15 @@ namespace localChess.Chess
         [JsonInclude]
         public bool ShowEvalBar;
         [JsonInclude]
-        public int PVCount = 1;
+        public int PvCount = 1;
         [JsonInclude]
-        public int ELO = 4000;
+        public int Elo = 4000;
         [JsonInclude]
-        public bool LimitElo = false;
+        public bool LimitElo;
         [JsonInclude]
         public int SkillLevel = 20;
         [JsonInclude]
-        public bool UseSkillLevel = false;
+        public bool UseSkillLevel;
         [JsonInclude]
         public int CheckDepth = 6;
 
@@ -75,7 +61,7 @@ namespace localChess.Chess
         public string CurrentFen = "";
 
         [JsonInclude]
-        public bool ShowConsole = false;
+        public bool ShowConsole;
 
         [JsonIgnore]
         public List<EngineBridge.EngineType> EngineTypes = Enum.GetValues(typeof(EngineBridge.EngineType)).Cast<EngineBridge.EngineType>().ToList();
@@ -83,20 +69,20 @@ namespace localChess.Chess
         [JsonIgnore] public List<string> EngineNames = new();
 
         [JsonInclude]
-        public int SelectedEngine = 0;
+        public int SelectedEngine;
 
-        private long _frameCount = 0;
+        private long _frameCount;
 
-        private List<Action> PostRenderList = new();
+        private List<Action> _postRenderList = new();
 
         public void PostRender()
         {
-            foreach (var cb in PostRenderList)
+            foreach (var cb in _postRenderList)
             {
                 cb();
             }
 
-            PostRenderList.Clear();
+            _postRenderList.Clear();
         }
 
         public void SaveToJson()
@@ -118,15 +104,15 @@ namespace localChess.Chess
             for (var i = 0; i < selected.Board.Length; i++)
             {
                 if (board[i] is null) continue;
-                if (board[i].Black != selected.BlackPlaying) continue;
+                if (board[i]!.Black != selected.BlackPlaying) continue;
 
-                if (ActiveGame.EngineType == EngineBridge.EngineType.Bull)
+                if (ActiveGame!.EngineType == EngineBridge.EngineType.Bull)
                 {
                     var intMoves = Engine.GetLegalMovesFor(i, selected, true, PieceType.Queen, selected.EnPassantIndex);
                     List<Move> moves = new();
                     foreach (var move in intMoves.moves)
                     {
-                        if (board[i].Type == PieceType.Pawn && Game.GetPos(move).y is 0 or 7)
+                        if (board[i]!.Type == PieceType.Pawn && Game.GetPos(move).y is 0 or 7)
                         {
                             moves.Add(new Move(i, move)
                             {
@@ -162,8 +148,8 @@ namespace localChess.Chess
                             var thread = new Thread(() =>
                             {
                                 var moveCount = CountMoves(depth - 1, maxDepth, game);
-                                numPositions += moveCount;
-                                Console.WriteLine(move.ToUCI() + ": " + moveCount);
+                                Interlocked.Add(ref numPositions, moveCount);
+                                Console.WriteLine(move.ToUci() + @": " + moveCount);
                             })
                             {
                                 IsBackground = true
@@ -184,7 +170,7 @@ namespace localChess.Chess
                             var game = selected.Copy();
                             if (game.PerformMove(move))
                             {
-                                numPositions += CountMoves(depth - 1, maxDepth, game);
+                                Interlocked.Add(ref numPositions, CountMoves(depth - 1, maxDepth, game));
                             }
                         }
                     }
@@ -194,7 +180,7 @@ namespace localChess.Chess
                     var intMoves = BullEngine.GetLegalMovesFor((ushort)i, selected.Board, true, selected.EnPassantIndex).moves;
                     if (depth == maxDepth)
                     {
-                        List<Thread> threads = new List<Thread>();
+                        var threads = new List<Thread>();
                         foreach (var mv in intMoves)
                         {
                             var move = mv.Item1;
@@ -204,8 +190,8 @@ namespace localChess.Chess
                             var thread = new Thread(() =>
                             {
                                 var moveCount = CountMoves(depth - 1, maxDepth, game);
-                                numPositions += moveCount;
-                                Console.WriteLine(move.ToUCI() + ": " + moveCount);
+                                Interlocked.Add(ref numPositions, moveCount);
+                                Console.WriteLine(move.ToUci() + @": " + moveCount);
                             })
                             {
                                 IsBackground = true
@@ -226,7 +212,7 @@ namespace localChess.Chess
                             var game = selected.Copy();
                             if (game.PerformMove(move.Item1))
                             {
-                                numPositions += CountMoves(depth - 1, maxDepth, game);
+                                Interlocked.Add(ref numPositions, CountMoves(depth - 1, maxDepth, game));
                             }
                         }
                     }
@@ -237,30 +223,28 @@ namespace localChess.Chess
 
             return numPositions;
         }
-        public static GUI LoadFromJson()
+        public static Gui LoadFromJson()
         {
             if (!File.Exists("C:\\localChess\\Settings.json"))
             {
-                var gui = new GUI();
+                var gui = new Gui();
                 var json = JsonSerializer.Serialize(gui);
                 File.WriteAllText("C:\\localChess\\Settings.json", json);
                 return gui;
             }
-            else
+
+            var text = File.ReadAllText("C:\\localChess\\Settings.json");
+            try
             {
-                var text = File.ReadAllText("C:\\localChess\\Settings.json");
-                try
-                {
-                    var gui = JsonSerializer.Deserialize<GUI>(text);
-                    return gui!;
-                }
-                catch (Exception)
-                {
-                    // ignored
-                }
+                var gui = JsonSerializer.Deserialize<Gui>(text);
+                return gui!;
+            }
+            catch (Exception)
+            {
+                // ignored
             }
 
-            return new GUI();
+            return new Gui();
         }
 
         public void Init()
@@ -275,10 +259,9 @@ namespace localChess.Chess
             handler.DefaultProxyCredentials = CredentialCache.DefaultCredentials;
             _client = new(handler);
 
-            ActiveGame.OnMove += (_, move) =>
+            ActiveGame!.OnMove += (_, move) =>
             {
-                _moveList.Add(move.ToUCI());
-                _undoHistory.Add(Program.ActiveGame?.Copy());
+                _moveList.Add(move.ToUci());
                 EvaluateMove();
             };
 
@@ -290,9 +273,7 @@ namespace localChess.Chess
             {
                 _bestMove = new();
                 _eval = UCIEngine.Eval(_moveList) + "";
-                _lastDepth = UCIEngine.Depth;
-                _lastPV = PVCount;
-                _bestMove = UCIEngine.GetBestMove(_moveList, PVCount);
+                _bestMove = UCIEngine.GetBestMove(_moveList, PvCount);
             }).Start();
 
             if (_moveList.Count > 10) return;
@@ -303,10 +284,10 @@ namespace localChess.Chess
                 try
                 {
                     HttpRequestMessage req = new(HttpMethod.Get, "https://explorer.lichess.ovh/lichess?play=" + uciString);
-                    var res = _client.SendAsync(req).Result.Content.ReadAsStringAsync().Result;
+                    var res = _client!.SendAsync(req).Result.Content.ReadAsStringAsync().Result;
                     try
                     {
-                        _opening = JsonSerializer.Deserialize<JsonObject>(res)["opening"]["name"].ToString();
+                        _opening = JsonSerializer.Deserialize<JsonObject>(res)!["opening"]!["name"]!.ToString();
                     }
                     catch (JsonException)
                     {
@@ -341,12 +322,12 @@ namespace localChess.Chess
             //ImGui.GetFont().Scale = 1.8f;
             if (ShowEvalBar)
             {
-                ImGui.SetNextWindowPos(new Vector2(ActiveGame.DisplaySize + 30, 0));
+                ImGui.SetNextWindowPos(new Vector2(ActiveGame!.DisplaySize + 30, 0));
                 ImGui.SetNextWindowSize(new Vector2(ActiveGame.DisplaySize - 30, ActiveGame.DisplaySize));
             }
             else
             {
-                ImGui.SetNextWindowPos(new Vector2(ActiveGame.DisplaySize, 0));
+                ImGui.SetNextWindowPos(new Vector2(ActiveGame!.DisplaySize, 0));
                 ImGui.SetNextWindowSize(new Vector2(ActiveGame.DisplaySize, ActiveGame.DisplaySize));
             }
             
@@ -358,11 +339,12 @@ namespace localChess.Chess
                     Move mv;
                     do
                     {
-                        mv = Move.FromUCI(flatBestMoves[moveSelected--]);
+                        mv = Move.FromUci(flatBestMoves[moveSelected--]);
                     } while (!ActiveGame.PerformMove(mv) && moveSelected >= 0);
                 }
                 catch (Exception)
                 {
+                    // ignored
                 }
             }
 
@@ -442,14 +424,13 @@ namespace localChess.Chess
                                 Move mv;
                                 do
                                 {
-                                    mv = Move.FromUCI(flatBestMoves[moveSelected--]);
+                                    mv = Move.FromUci(flatBestMoves[moveSelected--]);
                                 } while (!ActiveGame.PerformMove(mv) && moveSelected >= 0);
                             }
                             catch (Exception)
                             {
-
+                                // ignored
                             }
-                            
                         }
                     } else if (UCIEngine.StockfishProcess != null)
                     {
@@ -482,7 +463,6 @@ namespace localChess.Chess
                             ImGui.Text("UCI");
 
                             var pvCount = 0;
-                            var count = 0;
                             foreach (var pv in _bestMove)
                             {
                                 pvCount++;
@@ -501,16 +481,14 @@ namespace localChess.Chess
                                     {
                                         try
                                         {
-                                            var mv = Move.FromUCI(uci);
+                                            var mv = Move.FromUci(uci);
                                             ActiveGame.PerformMove(mv);
                                         }
                                         catch (Exception)
                                         {
-
+                                            // ignored
                                         }
                                     }
-
-                                    count++;
                                 }
                             }
                             ImGui.EndTable();
@@ -519,8 +497,8 @@ namespace localChess.Chess
                     }
 
                     ImGui.SliderInt("Depth", ref Depth, 1, 100);
-                    ImGui.SliderInt("PV Count", ref PVCount, 1, 15);
-                    ImGui.SliderInt("Estimated ELO", ref ELO, 1, 4000);
+                    ImGui.SliderInt("PV Count", ref PvCount, 1, 15);
+                    ImGui.SliderInt("Estimated ELO", ref Elo, 1, 4000);
                     ImGui.SameLine();
                     ImGui.Checkbox("Limit ELO", ref LimitElo);
                     ImGui.SliderInt("Skill Level", ref SkillLevel, 0, 20);
@@ -533,10 +511,10 @@ namespace localChess.Chess
 
                     UCIEngine.SkillLevel = SkillLevel;
                     UCIEngine.UseSkillLevel = UseSkillLevel;
-                    UCIEngine.Elo = ELO;
+                    UCIEngine.Elo = Elo;
                     UCIEngine.LimitElo = LimitElo;
 
-                    ImGui.SliderInt("Play n'th move", ref NthBestMove, 1, Depth * PVCount);
+                    ImGui.SliderInt("Play n'th move", ref NthBestMove, 1, Depth * PvCount);
                     ImGui.Checkbox("Hide best-move", ref HideBestMove);
                     ImGui.SameLine();
                     ImGui.Checkbox("Auto-perform", ref AutoPerform);
@@ -554,11 +532,15 @@ namespace localChess.Chess
                     {
                         try
                         {
-                            var zip = _client.GetByteArrayAsync("https://stockfishchess.org/files/stockfish_15.1_win_x64_avx2.zip").Result;
+                            var zip = _client!.GetByteArrayAsync("https://stockfishchess.org/files/stockfish_15.1_win_x64_avx2.zip").Result;
                             File.WriteAllBytes("C:\\localChess\\stockfish.zip", zip);
                             ZipFile.ExtractToDirectory("C:\\localChess\\stockfish.zip", "C:\\localChess\\");
-                        } catch(Exception) {}
-                        
+                        }
+                        catch (Exception)
+                        {
+                            // ignored
+                        }
+
                         Path = "C:\\localChess\\stockfish_15.1_win_x64_avx2\\stockfish-windows-2022-x86-64-avx2.exe";
                     }
                 }
@@ -574,11 +556,11 @@ namespace localChess.Chess
                         ActiveGame = game;
                     }
 
-                    ImGui.Text("Current FEN: " + ActiveGame.GetFEN());
+                    ImGui.Text("Current FEN: " + ActiveGame!.GetFen());
                     ImGui.SameLine();
                     if (ImGui.Button("Copy to clipboard"))
                     {
-                        Raylib.SetClipboardText(ActiveGame.GetFEN());
+                        Raylib.SetClipboardText(ActiveGame.GetFen());
                     }
 
                     ImGui.Separator();
@@ -594,11 +576,11 @@ namespace localChess.Chess
                         }
                         if (ImGui.IsItemHovered())
                         {
-                            PostRenderList.Add(() =>
+                            _postRenderList.Add(() =>
                             {
                                 var mPos = Raylib.GetMousePosition();
                                 var game = Game.FromFen(fen);
-                                game.DisplaySize = 360;
+                                game!.DisplaySize = 360;
                                 if(mPos.Y > 360)
                                     game.Render((int)mPos.X, (int)mPos.Y - (game.DisplaySize));
                                 else
@@ -632,7 +614,7 @@ namespace localChess.Chess
                     ImGui.SliderInt("Check depth", ref CheckDepth, 0, 20);
                     if (ImGui.Button("Check"))
                     {
-                        Console.WriteLine("Depth: " + CheckDepth + ", Moves: " + CountMoves(CheckDepth, CheckDepth, ActiveGame.Copy()));
+                        Console.WriteLine(@"Depth: " + CheckDepth + @", Moves: " + CountMoves(CheckDepth, CheckDepth, ActiveGame.Copy()));
                     }
                 }
                 
@@ -687,17 +669,19 @@ namespace localChess.Chess
                 }
 
                 _currentEval = Lerp(_currentEval, float.Parse(_eval), 0.2f);
-                ImGui.GetBackgroundDrawList().AddRectFilled(new Vector2(ActiveGame.DisplaySize, ActiveGame.DisplaySize), new Vector2(ActiveGame.DisplaySize + 30, ActiveGame.DisplaySize / 2 - (ActiveGame.DisplaySize / 2 * _currentEval)),
+                ImGui.GetBackgroundDrawList().AddRectFilled(new Vector2(ActiveGame.DisplaySize, ActiveGame.DisplaySize),
+                    new Vector2(ActiveGame.DisplaySize + 30,
+                        ActiveGame.DisplaySize / 2.0f - (ActiveGame.DisplaySize / 2.0f * _currentEval)),
                     ImGui.ColorConvertFloat4ToU32(new Vector4(0.9f, 0.9f, 0.9f, 1.0f)));
             }
 
             if (ActiveGame.GetMouseBoardPosition().HasValue && ActiveGame.SelectedIndex is not null)
             {
                 if (ActiveGame.Board[ActiveGame.SelectedIndex.Value] is null) return;
-                if (ActiveGame.Board[ActiveGame.SelectedIndex.Value].Type != PieceType.Pawn) return;
+                if (ActiveGame.Board[ActiveGame.SelectedIndex.Value]!.Type != PieceType.Pawn) return;
                 var mousePos = ActiveGame.GetMouseBoardPosition();
-                var mousePosIndex = Game.GetIndex(mousePos.Value.x, mousePos.Value.y);
-                foreach (var move in ActiveGame.LegalMoves)
+                var mousePosIndex = Game.GetIndex(mousePos!.Value.x, mousePos.Value.y);
+                foreach (var move in ActiveGame.LegalMoves!)
                 {
                     var (moveX, moveY) = Game.GetPos(move);
                     if (moveY is not (0 or 7) || mousePosIndex != move) continue;

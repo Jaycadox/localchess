@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace localChess.Chess
+﻿namespace localChess.Chess
 {
     internal class EngineBridge
     {
@@ -92,7 +86,7 @@ namespace localChess.Chess
                     {
                         game.LegalMoves = null;
                         game.SpecialMoves = null;
-                        Console.WriteLine("ENGINE: Illegal move. " + game.PrettyPrintPosition(move.FromIndex) + " -> " + game.PrettyPrintPosition(move.ToIndex));
+                        Console.WriteLine(@"ENGINE: Illegal move. " + game.PrettyPrintPosition(move.FromIndex) + @" -> " + game.PrettyPrintPosition(move.ToIndex));
                         return;
                     }
 
@@ -108,7 +102,7 @@ namespace localChess.Chess
                     {
                         game.Board[move.ToIndex] = game.Board[move.FromIndex];
                         game.Board[move.FromIndex] = null;
-                        if (result.hooked is not null && result.hooked.Contains(move.ToIndex) && game.SpecialMoves.ContainsKey(move.ToIndex))
+                        if (result.hooked is not null && result.hooked.Contains(move.ToIndex) && game.SpecialMoves!.ContainsKey(move.ToIndex))
                         {
                             game.SpecialMoves[move.ToIndex](game);
                         }
@@ -146,7 +140,7 @@ namespace localChess.Chess
                         {
                             var (pMove, moveList) = mv;
                             if (move.FromIndex != pMove.FromIndex || move.ToIndex != pMove.ToIndex) continue;
-                            if (game.Board[move.FromIndex].Type == PieceType.Pawn && Math.Abs(move.FromIndex - move.ToIndex) > 10)
+                            if (game.Board[move.FromIndex]!.Type == PieceType.Pawn && Math.Abs(move.FromIndex - move.ToIndex) > 10)
                             {
                                 game.EnPassantIndex = move.ToIndex;
                             }
@@ -155,9 +149,9 @@ namespace localChess.Chess
                                 game.EnPassantIndex = null;
                             }
 
-                            if (game.Board[move.FromIndex].Type == PieceType.Pawn && move.ToIndex is < 8 or >= 56)
+                            if (game.Board[move.FromIndex]!.Type == PieceType.Pawn && move.ToIndex is < 8 or >= 56)
                             {
-                                game.Board[move.FromIndex].Type = move.PromoteInto;
+                                game.Board[move.FromIndex]!.Type = move.PromoteInto;
                                 move.WasPromoted = true;
                             }
 

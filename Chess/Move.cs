@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace localChess.Chess
+﻿namespace localChess.Chess
 {
     internal class Move
     {
@@ -79,7 +73,8 @@ namespace localChess.Chess
             }
             else
             {
-                Console.WriteLine($"ENGINE: Impossible move. [Unknown Position] ({type.ToString()})" + " -> " + game.PrettyPrintPosition(move.ToIndex) + " | " + ogAn);
+                Console.WriteLine($@"ENGINE: Impossible move. [Unknown Position] ({type})" + @" -> " +
+                                  game.PrettyPrintPosition(move.ToIndex) + @" | " + ogAn);
                 //Thread.Sleep(10000);
             }
             return move;
@@ -105,7 +100,7 @@ namespace localChess.Chess
                 _ => null
             };
         }
-        public static Piece ConsumePiece(char piece, Game game)
+        public static Piece ConsumePiece(char piece, Game? game)
         {
             var type = PieceType.Pawn;
 
@@ -219,7 +214,7 @@ namespace localChess.Chess
             return pieces;
         }
 
-        public static Move FromUCI(string move)
+        public static Move FromUci(string move)
         {
             if(move.Length > 5)
             {
@@ -233,7 +228,7 @@ namespace localChess.Chess
 
             if (move.Length == 5)
             {
-                string p = move[4] + "";
+                var p = move[4] + "";
                 var pt = ConsumePieceType(ref p);
                 if (pt is not null)
                 {
@@ -245,7 +240,7 @@ namespace localChess.Chess
             return mv;
         }
 
-        public string ToUCI()
+        public string ToUci()
         {
             var (fromRow, toRow) = (8 - FromIndex / 8, 8 - ToIndex / 8);
             var (fromCol, toCol) = (FromIndex % 8, ToIndex % 8);

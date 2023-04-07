@@ -15,8 +15,7 @@ namespace localChess.Chess
         WhiteInCheck,
         BlackInCheck,
         WhiteInCheckmate,
-        BlackInCheckmate,
-        Promoted
+        BlackInCheckmate
     }
 
     internal class ColourHandler
@@ -246,7 +245,7 @@ namespace localChess.Chess
 
         public static (List<int> moves, List<Flags>? flags, Dictionary<int, Action<Game>>? special, List<int>? hooked) GetLegalMovesFor(int pieceIndex, Game game, bool recurse = true, PieceType promoteInto = PieceType.Queen, int? enPassantIndex = null)
         {
-            if (game.FlagsList is not null && (game.FlagsList.Contains(Chess.Flags.WhiteInCheckmate) || game!.FlagsList.Contains(Chess.Flags.BlackInCheckmate)))
+            if (game.FlagsList is not null && (game.FlagsList.Contains(Flags.WhiteInCheckmate) || game.FlagsList.Contains(Flags.BlackInCheckmate)))
             {
                 return (new List<int>(), null, null, null);
             }
@@ -310,13 +309,13 @@ namespace localChess.Chess
             {
                 case PieceType.Pawn:
                 {
-                    void PawnPromote(Game b, int x, int y)
+                    void PawnPromote(Game b, int ppx, int ppy)
                     {
                         var tmp = b.Board[h.CurrentIndex()];
                         if (tmp == null) return;
                         tmp.Type = promoteInto;
                         b.Board[h.CurrentIndex()] = null;
-                        b.Board[h.GetOffsetIndexUnbounded(x, y)] = tmp;
+                        b.Board[h.GetOffsetIndexUnbounded(ppx, ppy)] = tmp;
                     }
 
                     if (h.AddMove(0, 1, CaptureMode.NoneHook).added)
@@ -325,7 +324,7 @@ namespace localChess.Chess
                         {
                             special.Add(h.GetOffsetIndexUnbounded(0, 1), b =>
                             {
-                                b.Board[h.GetOffsetIndexUnbounded(0, 1)].Type = PieceType.Queen;
+                                b.Board[h.GetOffsetIndexUnbounded(0, 1)]!.Type = PieceType.Queen;
                                 b.DidJustPromote = true;
                             });
                         }
@@ -507,7 +506,7 @@ namespace localChess.Chess
                             b.Board[h.GetOffsetIndexUnbounded(1)] = tmp;
                             var result = IsInCheck(b);
 
-                            if (result is not null && result.Contains(p.Black ? Flags.BlackInCheck : Flags.WhiteInCheck))
+                            if (result.Contains(p.Black ? Flags.BlackInCheck : Flags.WhiteInCheck))
                             {
                                 // Being attacked, cannot castle
                             }
@@ -549,7 +548,7 @@ namespace localChess.Chess
                             b.Board[h.GetOffsetIndexUnbounded(-1)] = tmp;
                             var result = IsInCheck(b);
 
-                            if (result is not null && result.Contains(p.Black ? Flags.BlackInCheck : Flags.WhiteInCheck))
+                            if (result.Contains(p.Black ? Flags.BlackInCheck : Flags.WhiteInCheck))
                             {
                                 // Being attacked, cannot castle
                             }
@@ -585,10 +584,10 @@ namespace localChess.Chess
             }
 
 
-            var (moves, flags_, hooked) = h.GetMoves();
+            var (moves, moveFlags, hooked) = h.GetMoves();
 
-            if(flags_ is not null)
-                flags.AddRange(flags_);
+            if(moveFlags is not null)
+                flags.AddRange(moveFlags);
 
             if (whiteCheckmate) flags.Add(Flags.WhiteInCheckmate);
             if (blackCheckmate) flags.Add(Flags.BlackInCheckmate);

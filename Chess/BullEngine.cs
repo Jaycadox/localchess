@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Runtime.CompilerServices;
 
 namespace localChess.Chess
 {
@@ -12,7 +6,6 @@ namespace localChess.Chess
     {
         public const ushort White = 0;
         public const ushort Black = 1;
-        public const ushort Check = 0;
         public const ushort Checkmate = 2;
     }
     internal class BullEngine
@@ -20,20 +13,18 @@ namespace localChess.Chess
         public static (List<(Move, List<Move>)> moves, ushort? flags) GetLegalMovesFor(ushort index, Piece?[] board,
             bool black, int? enPassantIndex = null, bool onlyCareAboutCheck = false)
         {
-            Dictionary<ushort, Dictionary<ushort, List<Move>>> PieceMoves = new();
+            Dictionary<ushort, Dictionary<ushort, List<Move>>> pieceMoves = new();
             var inCheck = false;
             var kingIndex = 0;
             var (kingX, kingY) = (0, 0);
-            if (onlyCareAboutCheck || board[index].Type == PieceType.King)
+            if (onlyCareAboutCheck || board[index]?.Type == PieceType.King)
             {
                 for (ushort i = 0; i < 8 * 8; i++)
                 {
-                    if (board[i] is not null && board[i].Black == black && board[i].Type == PieceType.King)
-                    {
-                        kingIndex = i;
-                        (kingX, kingY) = Game.GetPos(kingIndex);
-                        break;
-                    }
+                    if (board[i] is null || board[i]?.Black != black || board[i]?.Type != PieceType.King) continue;
+                    kingIndex = i;
+                    (kingX, kingY) = Game.GetPos(kingIndex);
+                    break;
                 }
             }
 
@@ -43,23 +34,23 @@ namespace localChess.Chess
                 if (i != index)
                 {
                     var (x, y) = Game.GetPos(i);
-                    if (board[i]?.Type == PieceType.Pawn && !(x == kingX + 1 || x == kingY - 1))
+                    if (board[i]!.Type == PieceType.Pawn && !(x == kingX + 1 || x == kingY - 1))
                     {
                         continue;
                     }
-                    if (board[i]?.Type == PieceType.Rook && Math.Abs(kingX - x) > 1 && Math.Abs(kingY - y) > 1)
+                    if (board[i]!.Type == PieceType.Rook && Math.Abs(kingX - x) > 1 && Math.Abs(kingY - y) > 1)
                     {
                         continue;
                     }
-                    if (board[i]?.Type == PieceType.Knight && Math.Abs(kingX - x) > 2 && Math.Abs(kingY - y) > 2)
+                    if (board[i]!.Type == PieceType.Knight && Math.Abs(kingX - x) > 2 && Math.Abs(kingY - y) > 2)
                     {
                         continue;
                     }
-                    if (board[i]?.Type == PieceType.Bishop && Math.Abs(kingX - x) != Math.Abs(kingY - y))
+                    if (board[i]!.Type == PieceType.Bishop && Math.Abs(kingX - x) != Math.Abs(kingY - y))
                     {
                         continue;
                     }
-                    if (board[i]?.Type == PieceType.Queen && Math.Abs(kingX - x) != Math.Abs(kingY - y) && Math.Abs(kingX - x) > 1 && Math.Abs(kingY - y) > 1)
+                    if (board[i]!.Type == PieceType.Queen && Math.Abs(kingX - x) != Math.Abs(kingY - y) && Math.Abs(kingX - x) > 1 && Math.Abs(kingY - y) > 1)
                     {
                         continue;
                     }
@@ -77,26 +68,24 @@ namespace localChess.Chess
                         
                 }
                 if(!onlyCareAboutCheck)
-                    PieceMoves.Add(i, result.moves);
+                    pieceMoves.Add(i, result.moves);
             }
 
             if (onlyCareAboutCheck)
             {
-                return (new(), inCheck ? (black ? BullEngineFlags.Black : BullEngineFlags.White) : null);
+                return (new List<(Move, List<Move>)>(), inCheck ? black ? BullEngineFlags.Black : BullEngineFlags.White : null);
             }
 
-            Dictionary<ushort, List<ushort>> PieceIndexMoves = new();
-            List<ushort> EnemyIndexMoves = new();
-            foreach (var (idx, moves) in PieceMoves)
+            List<ushort> enemyIndexMoves = new();
+            foreach (var (idx, moves) in pieceMoves)
             {
-                PieceIndexMoves.Add(idx, moves.Keys.ToList());
                 if (board[idx]?.Black != black)
                 {
-                    EnemyIndexMoves.AddRange(moves.Keys.ToList());
+                    enemyIndexMoves.AddRange(moves.Keys.ToList());
                 }
             }
 
-            var pMoves = PieceMoves[index];
+            var pMoves = pieceMoves[index];
             foreach (var move in pMoves)
             {
                 Dictionary<ushort, Piece?> ogPieces = new();
@@ -112,12 +101,12 @@ namespace localChess.Chess
 
                     if (res.flags is not null)
                     {
-                        PieceMoves[index].Remove(move.Key);
+                        pieceMoves[index].Remove(move.Key);
                     }
                 }
             }
 
-            if (enPassantIndex is not null && board[index].Type == PieceType.Pawn && !inCheck && !onlyCareAboutCheck)
+            if (enPassantIndex is not null && board[index]!.Type == PieceType.Pawn && !inCheck && !onlyCareAboutCheck)
             {
                 if (index - 1 == enPassantIndex || index + 1 == enPassantIndex)
                 {
@@ -125,7 +114,7 @@ namespace localChess.Chess
                     {
                         if (index + 1 == enPassantIndex)
                         {
-                            PieceMoves[index].Add((ushort)(index + 9), new()
+                            pieceMoves[index].Add((ushort)(index + 9), new()
                             {
                                 new(index + 1, index + 9),
                                 new(index, index + 9),
@@ -133,7 +122,7 @@ namespace localChess.Chess
                         }
                         else
                         {
-                            PieceMoves[index].Add((ushort)(index + 7), new()
+                            pieceMoves[index].Add((ushort)(index + 7), new()
                             {
                                 new(index - 1, index + 7),
                                 new(index, index + 7),
@@ -144,7 +133,7 @@ namespace localChess.Chess
                     {
                         if (index - 1 == enPassantIndex)
                         {
-                            PieceMoves[index].Add((ushort)(index - 9), new()
+                            pieceMoves[index].Add((ushort)(index - 9), new()
                             {
                                 new(index - 1, index - 9),
                                 new(index, index - 9),
@@ -152,7 +141,7 @@ namespace localChess.Chess
                         }
                         else
                         {
-                            PieceMoves[index].Add((ushort)(index - 7), new()
+                            pieceMoves[index].Add((ushort)(index - 7), new()
                             {
                                 new(index + 1, index - 7),
                                 new(index, index - 7),
@@ -162,57 +151,48 @@ namespace localChess.Chess
                 }
             }
 
-            if (!onlyCareAboutCheck && !inCheck && index == kingIndex && (kingIndex == 4 || kingIndex == 60))
+            if (!onlyCareAboutCheck && !inCheck && index == kingIndex && kingIndex is 4 or 60)
             {
-                if (board[kingIndex].Type == PieceType.King && (board[kingIndex].MoveCount == 0))
+                if (board[kingIndex]!.Type == PieceType.King && (board[kingIndex]!.MoveCount == 0))
                 {
                     var kingSideRook = Game.GetIndex(kingX + 3, kingY);
                     var filled = board[Game.GetIndex(kingX + 1, kingY)] is not null || board[Game.GetIndex(kingX + 2, kingY)] is not null;
-                    var check = EnemyIndexMoves.Contains((ushort)Game.GetIndex(kingX + 1, kingY)) || EnemyIndexMoves.Contains((ushort)Game.GetIndex(kingX + 2, kingY));
-                    if (!check && !filled && kingSideRook < 8 * 8 && board[kingSideRook] is not null && board[kingSideRook].Type == PieceType.Rook && board[kingSideRook].MoveCount == 0)
+                    var check = enemyIndexMoves.Contains((ushort)Game.GetIndex(kingX + 1, kingY)) || enemyIndexMoves.Contains((ushort)Game.GetIndex(kingX + 2, kingY));
+                    if (!check && !filled && kingSideRook < 8 * 8 && board[kingSideRook] is not null && board[kingSideRook]!.Type == PieceType.Rook && board[kingSideRook]!.MoveCount == 0)
                     {
                         var idx = Game.GetIndex(kingX + 2, kingY);
-                        PieceMoves[index].Add((ushort)idx, new()
+                        pieceMoves[index].Add((ushort)idx, new()
                         {
-                            new(kingIndex, idx),
-                            new(kingSideRook, kingSideRook - 2),
+                            new Move(kingIndex, idx),
+                            new Move(kingSideRook, kingSideRook - 2),
                         });
                     }
 
                     var queenSideRook = Game.GetIndex(kingX - 4, kingY);
                     filled = board[Game.GetIndex(kingX - 1, kingY)] is not null || board[Game.GetIndex(kingX - 2, kingY)] is not null || board[Game.GetIndex(kingX - 3, kingY)] is not null;
-                    check = EnemyIndexMoves.Contains((ushort)Game.GetIndex(kingX - 1, kingY)) || EnemyIndexMoves.Contains((ushort)Game.GetIndex(kingX - 2, kingY)) || EnemyIndexMoves.Contains((ushort)Game.GetIndex(kingX - 3, kingY));
-                    if (!check && !filled && queenSideRook >= 0 && board[queenSideRook] is not null && board[queenSideRook].Type == PieceType.Rook && board[queenSideRook].MoveCount == 0)
+                    check = enemyIndexMoves.Contains((ushort)Game.GetIndex(kingX - 1, kingY)) || enemyIndexMoves.Contains((ushort)Game.GetIndex(kingX - 2, kingY)) || enemyIndexMoves.Contains((ushort)Game.GetIndex(kingX - 3, kingY));
+                    if (!check && !filled && queenSideRook >= 0 && board[queenSideRook] is not null && board[queenSideRook]!.Type == PieceType.Rook && board[queenSideRook]!.MoveCount == 0)
                     {
                         var idx = Game.GetIndex(kingX - 2, kingY);
-                        PieceMoves[index].Add((ushort)idx, new()
+                        pieceMoves[index].Add((ushort)idx, new()
                         {
-                            new(kingIndex, idx),
-                            new(queenSideRook, queenSideRook + 3),
+                            new Move(kingIndex, idx),
+                            new Move(queenSideRook, queenSideRook + 3),
                         });
                     }
                 }
             }
 
-            if (PieceMoves.Count == 0)
+            if (pieceMoves.Count == 0)
             {
-                Console.WriteLine("checkmate 1");
+                Console.WriteLine(@"checkmate 1");
             }
 
-            bool checkMate = false;
+            var checkMate = false;
 
             if (inCheck)
             {
-                checkMate = true;
-                foreach (var moves in PieceMoves)
-                {
-                    if (board[moves.Key].Black != black) continue;
-                    if (moves.Value.Count != 0)
-                    {
-                        checkMate = false;
-                        break;
-                    }
-                }
+                checkMate = pieceMoves.Where(moves => board[moves.Key]!.Black == black).All(moves => moves.Value.Count == 0);
             }
             ushort? flags = null;
             if (inCheck)
@@ -225,14 +205,14 @@ namespace localChess.Chess
 
             }
 
-            return (PieceMoves[index].Select(x => (new Move(index, x.Key), x.Value)).ToList(), flags);
+            return (pieceMoves[index].Select(x => (new Move(index, x.Key), x.Value)).ToList(), flags);
         }
 
         private static (Dictionary<ushort, List<Move>> moves, ushort? flags) InternalLegalMovesFor(ushort index, Piece?[] board, bool onlyCareAboutCheck = false)
         {
             Dictionary<ushort, List<Move>> moves = new();
 
-            ushort? flags = null;
+            uint? flags = null;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             (bool moved, bool intersecting) AddCapturingMove(int from, int to, bool canCapture = true, bool forcedCapture = false)
@@ -240,11 +220,11 @@ namespace localChess.Chess
                 if (onlyCareAboutCheck)
                 {
                     if (0 > from || 0 > to) return (false, false);
-                    if (8 * 8 <= from || 8 * 8 <= to || board[to] is null || board[to]?.Black == board[from].Black) return (false, board[to] is not null);
-                    if (board[to].Type == PieceType.King)
+                    if (8 * 8 <= from || 8 * 8 <= to || board[to] is null || board[to]?.Black == board[from]!.Black) return (false, board[to] is not null);
+                    if (board[to]!.Type == PieceType.King)
                     {
                         flags ??= 0;
-                        flags |= board[to].Black ? BullEngineFlags.Black : BullEngineFlags.White;
+                        flags |= board[to]!.Black ? BullEngineFlags.Black : BullEngineFlags.White;
                         return (false, true);
                     }
                     else
@@ -260,11 +240,11 @@ namespace localChess.Chess
                 if (8 * 8 <= from || 8 * 8 <= to) return (false, false);
                 var inter = board[to] is not null;
                 if (board[from] is null) return (false, inter);
-                if (board[to] is not null && board[to].Black == board[from].Black) return (false, inter);
-                if (board[to] is not null && board[to].Type == PieceType.King && board[to].Black != board[from].Black)
+                if (board[to] is not null && board[to]!.Black == board[from]!.Black) return (false, inter);
+                if (board[to] is not null && board[to]!.Type == PieceType.King && board[to]!.Black != board[from]!.Black)
                 {
                     flags ??= 0;
-                    flags |= board[to].Black ? BullEngineFlags.Black : BullEngineFlags.White;
+                    flags |= board[to]!.Black ? BullEngineFlags.Black : BullEngineFlags.White;
                     return (false, true);
                 }
 
@@ -280,7 +260,7 @@ namespace localChess.Chess
                 }
                 else
                 {
-                    moves.Add((ushort)to, new() {});
+                    moves.Add((ushort)to, new());
                 }
                 
                 return (true, inter);
@@ -289,7 +269,7 @@ namespace localChess.Chess
             var piece = board[index];
             if (piece == null)
             {
-                return (new(), flags);
+                return (new(), (ushort?)flags);
             }
 
             var black = piece.Black;
@@ -398,7 +378,7 @@ namespace localChess.Chess
                 }
             }
 
-            return (moves, flags);
+            return (moves, (ushort?)flags);
         }
     }
 }

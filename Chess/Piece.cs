@@ -12,9 +12,9 @@ namespace localChess.Chess
         public PieceType Type { get; set; }
         public int MoveCount { get; set; }
         public bool Black { get; }
-        public Game ActiveGame { get; set; }
+        public Game? ActiveGame { get; set; }
 
-        public Piece(PieceType type, bool black, Game game)
+        public Piece(PieceType type, bool black, Game? game)
         {
             Type = type;
             Black = black;
