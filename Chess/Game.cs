@@ -18,7 +18,7 @@ namespace localChess.Chess
         public List<Flags>? FlagsList;
         public Dictionary<int, Action<Game>>? SpecialMoves;
         public EngineBridge.EngineType EngineType = EngineBridge.EngineType.Alpaca;
-        public int DisplaySize = 360;
+        public int DisplaySize = 720;
         public bool BlackPlaying { get; set; }
         public int? EnPassantIndex { get; set; }
         public bool DidJustEnPassant { get; set; }
@@ -69,19 +69,19 @@ namespace localChess.Chess
             var castling = parts[2];
             if (!castling.Contains("K") && game.Board[GetIndex(7, 7)] is not null)
             {
-                game.Board[GetIndex(7, 7)].MoveCount = 1;
+                game.Board[GetIndex(7, 7)]!.MoveCount = 1;
             }
-            if (!castling.Contains("k") && game.Board[GetIndex(7, 7)] is not null)
+            if (!castling.Contains("k") && game.Board[GetIndex(7, 0)] is not null)
             {
-                game.Board[GetIndex(7, 0)].MoveCount = 1;
+                game.Board[GetIndex(7, 0)]!.MoveCount = 1;
             }
-            if (!castling.Contains("Q") && game.Board[GetIndex(7, 7)] is not null)
+            if (!castling.Contains("Q") && game.Board[GetIndex(0, 7)] is not null)
             {
-                game.Board[GetIndex(0, 7)].MoveCount = 1;
+                game.Board[GetIndex(0, 7)]!.MoveCount = 1;
             }
-            if (!castling.Contains("q") && game.Board[GetIndex(7, 7)] is not null)
+            if (!castling.Contains("q") && game.Board[GetIndex(0, 0)] is not null)
             {
-                game.Board[GetIndex(0, 0)].MoveCount = 1;
+                game.Board[GetIndex(0, 0)]!.MoveCount = 1;
             }
 
             return game;
@@ -169,7 +169,7 @@ namespace localChess.Chess
 
         public bool PerformMove(Move move)
         {
-            Stopwatch stopwatch = new Stopwatch();
+            var stopwatch = new Stopwatch();
             stopwatch.Start();
             DidJustPromote = false;
             if (move.FromIndex == move.ToIndex || Board[move.FromIndex] is null || Board[move.FromIndex]!.Black != BlackPlaying || !move.Valid)
@@ -188,7 +188,7 @@ namespace localChess.Chess
 
             stopwatch.Stop();
             LastElapsedTicks = stopwatch.ElapsedTicks;
-            OnMove?.Invoke(this, move);
+            OnMove.Invoke(this, move);
             return true;
         }
 
@@ -348,26 +348,26 @@ namespace localChess.Chess
                         {
                             if (FlagsList.Contains(Chess.Flags.WhiteInCheck) && !piece.Black)
                             {
-                                Raylib.DrawRectangle(px * pieceSize, py * pieceSize, pieceSize, pieceSize, new Color(255, 128, 128, 255));
+                                Raylib.DrawRectangle(px * pieceSize + x, py * pieceSize + y, pieceSize, pieceSize, new Color(255, 128, 128, 255));
                             }
 
                             if (FlagsList.Contains(Chess.Flags.BlackInCheck) && piece.Black)
                             {
-                                Raylib.DrawRectangle(px * pieceSize, py * pieceSize, pieceSize, pieceSize, new Color(255, 128, 128, 255));
+                                Raylib.DrawRectangle(px * pieceSize + x, py * pieceSize + y, pieceSize, pieceSize, new Color(255, 128, 128, 255));
                             }
                             if (FlagsList.Contains(item: Chess.Flags.WhiteInCheckmate) && !piece.Black)
                             {
-                                Raylib.DrawRectangle(px * pieceSize, py * pieceSize, pieceSize, pieceSize, new Color(255, 0, 0, 255));
+                                Raylib.DrawRectangle(px * pieceSize + x, py * pieceSize + y, pieceSize, pieceSize, new Color(255, 0, 0, 255));
                             }
                             if (FlagsList.Contains(Chess.Flags.BlackInCheckmate) && piece.Black)
                             {
-                                Raylib.DrawRectangle(px * pieceSize, py * pieceSize, pieceSize, pieceSize, new Color(255, 0, 0, 255));
+                                Raylib.DrawRectangle(px * pieceSize + x, py * pieceSize + y, pieceSize, pieceSize, new Color(255, 0, 0, 255));
                             }
                         }
                     }
                     
 
-                    piece?.Render(px, py);
+                    piece?.Render((px * pieceSize + x) / (float)pieceSize, (py * pieceSize + y) / (float)pieceSize);
                 }
             }
 

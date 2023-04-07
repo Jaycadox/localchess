@@ -87,6 +87,7 @@ namespace localChess
                     RlImgui.Begin();
                     Gui.OnFrame();
                     RlImgui.End();
+                    Gui.PostRender();
                 }
                 
                 Raylib.EndDrawing();

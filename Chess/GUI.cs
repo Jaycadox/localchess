@@ -87,6 +87,18 @@ namespace localChess.Chess
 
         private long _frameCount = 0;
 
+        private List<Action> PostRenderList = new();
+
+        public void PostRender()
+        {
+            foreach (var cb in PostRenderList)
+            {
+                cb();
+            }
+
+            PostRenderList.Clear();
+        }
+
         public void SaveToJson()
         {
             var json = JsonSerializer.Serialize(this);
@@ -568,6 +580,50 @@ namespace localChess.Chess
                     {
                         Raylib.SetClipboardText(ActiveGame.GetFEN());
                     }
+
+                    ImGui.Separator();
+                    ImGui.Text("FEN presets");
+
+                    void Preset(string name, string fen)
+                    {
+                        if (ImGui.Button(name))
+                        {
+                            var game = Game.FromFen(fen);
+                            Program.ActiveGame = game;
+                            ActiveGame = game;
+                        }
+                        if (ImGui.IsItemHovered())
+                        {
+                            PostRenderList.Add(() =>
+                            {
+                                var mPos = Raylib.GetMousePosition();
+                                var game = Game.FromFen(fen);
+                                game.DisplaySize = 360;
+                                if(mPos.Y > 360)
+                                    game.Render((int)mPos.X, (int)mPos.Y - (game.DisplaySize));
+                                else
+                                    game.Render((int)mPos.X, (int)mPos.Y);
+                            });
+                        }
+                    }
+
+                    Preset("Ral's Trapped Queens Variant", "r1b1kb1r/Pp1ppppp/qP6/Pp6/pP6/Qp6/pP1PPPPP/R1B1KB1R w KQkq - 0 1");
+                    Preset("Promotion Prevention", "5bnr/5ppp/5pkp/5ppp/PPP5/PKP5/PPP5/RNB5 w - - 0 1");
+                    Preset("Ral's Trapped Kings Variant", "5bnr/5ppp/5pkp/5ppp/PPP5/PKP5/PPP5/RNB5 w - - 0 1");
+                    Preset("Ral's Lunar Eclipse Position", "k3r2r/pnbpPb2/1pp2Pp1/1p4P1/1p4P1/1Pp2PP1/2BpPBNP/R2R3K w - - 0 1");
+                    Preset("Danger", "2bb1bb1/2ppp3/8/3p4/B1pkp1B1/2RpR3/1p1P1p2/1N1K1N2 w - - 0 1");
+                    Preset("Miserable Kings", "1kr1qbnr/3bpppp/2np4/8/8/4PN2/PPPPB3/RNBQ1RK1 w - - 0 1");
+                    Preset("Locked", "6nk/3p2pr/p2Pp1pb/p2pP1p1/Pp1Pp1P1/1P1pP3/NR1P4/KNB5 w - - 0 1");
+                    Preset("Triple Knight Defense", "rqbnnn1k/4pppp/8/8/8/8/PPPP4/K1NNNBRQ w - - 0 1");
+                    Preset("Trapped Queens and Kings Combined", "r2n3r/Pp1pp1p1/qP4Pk/Pp4pP/pP4Pp/Qp4pK/pP1PP1P1/R2N3R w - - 0 1");
+                    Preset("Pawns of Perfection", "rnnqkbbr/4pppp/8/4PPPP/pppp4/8/PPPP4/RBBQKNNR w - - 0 1");
+                    Preset("Ultimate Inbalances", "kbrrqrbr/pppnnnpp/3ppp2/8/8/1P4P1/PQPPPPQP/RNBBKBBR w KQ - 0 1");
+                    Preset("What's Your Decision?", "nbrnbrbq/pppp1p1p/ppp2PpP/k5P1/1p5K/pPp2PPP/P1P1PPPP/QBRBNRBN w - - 0 1");
+                    Preset("Cat and Mouse", "b1b1b1bk/ppp1P1pp/4P3/4P3/4P3/4P3/P3P2P/4KBNR w - - 0 1");
+                    Preset("Super KID", "r1bqnrkr/pppbnnbp/3p1qp1/3Pp3/2P1Pp2/B1NN1P2/PPRQBBPP/R2QNRK1 w - - 0 13");
+                    Preset("Overly Ambitious", "k1nqn3/p1p1p1p1/PpPpPpPp/1P1P1P1P/8/8/6NN/6NK w - - 0 1");
+
+                    ImGui.Separator();
                 }
                 
                 ImGui.Separator();
