@@ -10,6 +10,7 @@ namespace localChess.Chess
     }
     internal class BullEngine
     {
+        [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
         public static (List<(Move, List<Move>)> moves, ushort? flags) GetLegalMovesFor(ushort index, Piece?[] board,
             bool black, int? enPassantIndex = null, bool onlyCareAboutCheck = false)
         {
@@ -208,13 +209,14 @@ namespace localChess.Chess
             return (pieceMoves[index].Select(x => (new Move(index, x.Key), x.Value)).ToList(), flags);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
         private static (Dictionary<ushort, List<Move>> moves, ushort? flags) InternalLegalMovesFor(ushort index, Piece?[] board, bool onlyCareAboutCheck = false)
         {
             Dictionary<ushort, List<Move>> moves = new();
 
             uint? flags = null;
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
             (bool moved, bool intersecting) AddCapturingMove(int from, int to, bool canCapture = true, bool forcedCapture = false)
             {
                 if (onlyCareAboutCheck)

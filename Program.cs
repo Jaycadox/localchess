@@ -8,12 +8,14 @@ using localChess.Chess;
 using localChess.Properties;
 using localChess.Renderer;
 using System.Runtime.InteropServices;
+using localChess.Networking;
 
 namespace localChess
 {
     internal class Program
     {
         public static Game? ActiveGame = null;
+        public static NetworkConfig Network = new();
         public static Gui? Gui = null;
 
         public static void Reset()
@@ -40,9 +42,65 @@ namespace localChess
         public const int SW_SHOW = 5;
         public static bool ShowGui = true;
         public const int Size = 720;
+        public static Thread? NetworkThread = null;
+
+        public static void NetworkSetup()
+        {
+            Network.Communication.OnConnect += (_, game) =>
+            {
+                Network.Communication.SendPacket(new UserInfoPacket() {Name = Network.Name, PlayingBlack = Network.PrefersBlack});
+            };
+        }
+
+        public static void Connect(string ip, int port)
+        {
+            NetworkThread = new(() =>
+            {
+                Network.PlayingAgainst = null;
+                try
+                {
+                    Network.Communication.ConnectToServer(ip, port);
+                    Console.WriteLine(@"[Client] Connected to server");
+                    Network.Communication.ListenForever();
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    Console.WriteLine(e.StackTrace);
+                    Network.Communication.Stop();
+                }
+                Console.WriteLine(@"[Client] Disconnected from server");
+                ActiveGame!.LockedColour = null;
+            });
+            NetworkThread.Start();
+        }
+
+        public static void StartServer(int port)
+        {
+            NetworkThread = new(() =>
+            {
+                Network.PlayingAgainst = null;
+                try
+                {
+                    Network.Communication.StartServer(port);
+                    Console.WriteLine(@"[Server] Connected to client");
+                    Network.Communication.ListenForever();
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    Console.WriteLine(e.StackTrace);
+                    Network.Communication.Stop();
+                }
+                Console.WriteLine(@"[Server] Disconnected from client");
+                ActiveGame!.LockedColour = null;
+            });
+            NetworkThread.Start();
+        }
 
         static void Main(string[] args)
         {
+            NetworkSetup();
             Raylib.SetTraceLogLevel(TraceLogLevel.LOG_WARNING);
             if (!Directory.Exists("C:\\localChess"))
             {
@@ -53,7 +111,7 @@ namespace localChess
 
             Raylib.InitWindow(Size * 2, Size, "localChess");
             Raylib.SetExitKey(KeyboardKey.KEY_END);
-            RlImgui.Setup(() => new Vector2(ShowGui ? Size * 2 : Size, Size));
+            RlImgui.Setup(() => new Vector2(Raylib.GetScreenWidth(), Size));
             
             PieceRenderer.Prepare();
 
@@ -90,7 +148,7 @@ namespace localChess
 
                 Raylib.EndDrawing();
 
-                if (Raylib.IsKeyPressed(KeyboardKey.KEY_SPACE))
+                if (Raylib.IsKeyPressed(KeyboardKey.KEY_F1))
                 {
                     ShowGui = !ShowGui;
                     Raylib.SetWindowSize(ShowGui ? Size * 2 : Size, Size);
@@ -100,7 +158,7 @@ namespace localChess
             ShowWindow(Program.GetConsoleWindow(), Program.SW_SHOW);
 
             Gui?.SaveToJson();
-
+            Network.Communication.Stop();
             RlImgui.Shutdown();
             Raylib.CloseWindow();
         }

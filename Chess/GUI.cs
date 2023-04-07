@@ -75,6 +75,15 @@ namespace localChess.Chess
 
         private List<Action> _postRenderList = new();
 
+        [JsonInclude]
+        public string CfgName = "A localChess user.";
+        [JsonInclude]
+        public bool CfgPrefersBlack = false;
+        [JsonInclude]
+        public string CfgIp = "10.0.0.1";
+        [JsonInclude]
+        public int CfgPort = 80;
+
         public void PostRender()
         {
             foreach (var cb in _postRenderList)
@@ -370,7 +379,7 @@ namespace localChess.Chess
                 ImGui.GetBackgroundDrawList().AddRectFilled(ImGui.GetItemRectMin(), ImGui.GetItemRectMax(), ImGui.ColorConvertFloat4ToU32(new Vector4(0.1f, 0.1f, 0.1f, 1)));
                 ImGui.Separator();
                 ImGui.BeginGroup();
-                if (ImGui.Button("Reset game"))
+                if (!Program.Network.Communication.IsConnected() && ImGui.Button("Reset game"))
                 {
                     SaveToJson();
                     Program.Reset();
@@ -401,7 +410,7 @@ namespace localChess.Chess
                 }
 
                 ImGui.Separator();
-                if (ImGui.CollapsingHeader("Stockfish", ImGuiTreeNodeFlags.DefaultOpen))
+                if (!Program.Network.Communication.IsConnected() && ImGui.CollapsingHeader("Stockfish", ImGuiTreeNodeFlags.DefaultOpen))
                 {
                     var bestMove = "";
                     if (moveSelected < 0)
@@ -545,7 +554,50 @@ namespace localChess.Chess
                     }
                 }
                 ImGui.Separator();
-                if (ImGui.CollapsingHeader("FEN loader"))
+                if (ImGui.CollapsingHeader("Networking"))
+                {
+                    if (!Program.Network.Communication.IsConnected())
+                    {
+                        ImGui.InputText("Username", ref CfgName, 64);
+                        Program.Network.Name = CfgName;
+                        ImGui.SameLine();
+                        ImGui.Checkbox("Play as black", ref CfgPrefersBlack);
+                        Program.Network.PrefersBlack = CfgPrefersBlack;
+                        if (ImGui.IsItemHovered())
+                        {
+                            ImGui.SetTooltip("Option only takes effect when hosting server");
+                        }
+
+                        ImGui.InputText("Server address", ref CfgIp, 64);
+                        ImGui.InputInt("Port", ref CfgPort);
+
+                        if (ImGui.Button("Connect"))
+                        {
+                            Program.Connect(CfgIp, CfgPort);
+                        }
+
+                        ImGui.SameLine();
+                        if (ImGui.Button("Start server"))
+                        {
+                            Program.StartServer(CfgPort);
+                        }
+                    }
+                    else
+                    {
+                        if (Program.Network.PlayingAgainst is not null)
+                        {
+                            ImGui.Text("Playing against: '" + Program.Network.PlayingAgainst + "'");
+                            ImGui.Text("Playing as: " + (ActiveGame.LockedColour!.Value ? "black" : "white"));
+                        }
+                        if (ImGui.Button("Disconnect/end server"))
+                        {
+                            Program.Network.Communication.Stop();
+                        }
+                    }
+                    
+                }
+                ImGui.Separator();
+                if (!Program.Network.Communication.IsConnected() && ImGui.CollapsingHeader("FEN loader"))
                 {
                     ImGui.InputText("FEN string", ref CurrentFen, 128);
                     ImGui.SameLine();
@@ -580,9 +632,9 @@ namespace localChess.Chess
                             {
                                 var mPos = Raylib.GetMousePosition();
                                 var game = Game.FromFen(fen);
-                                game!.DisplaySize = 360;
+                                game.DisplaySize = 360;
                                 if(mPos.Y > 360)
-                                    game.Render((int)mPos.X, (int)mPos.Y - (game.DisplaySize));
+                                    game.Render((int)mPos.X, (int)mPos.Y - game.DisplaySize);
                                 else
                                     game.Render((int)mPos.X, (int)mPos.Y);
                             });
@@ -660,7 +712,9 @@ namespace localChess.Chess
 
             if (ImGui.Checkbox("Show console", ref ShowConsole))
             {
+                Console.Clear();
                 Program.ShowWindow(Program.GetConsoleWindow(), ShowConsole ? Program.SW_SHOW : Program.SW_HIDE);
+                Console.WriteLine(@"localChess -- made by jayphen");
             }
 
             if (ShowEvalBar)
@@ -680,7 +734,7 @@ namespace localChess.Chess
             }
 
             ImGui.End();
-            if (ActiveGame.GetMouseBoardPosition().HasValue && ActiveGame.SelectedIndex is not null)
+            if (ActiveGame.GetMouseBoardPosition().HasValue && ActiveGame.SelectedIndex is not null && ActiveGame.LegalMoves is not null)
             {
                 if (ActiveGame.Board[ActiveGame.SelectedIndex.Value] is null) return;
                 if (ActiveGame.Board[ActiveGame.SelectedIndex.Value]!.Type != PieceType.Pawn) return;

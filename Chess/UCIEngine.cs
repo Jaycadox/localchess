@@ -54,8 +54,6 @@ namespace localChess.Chess
                 if(output is not null)
                     lines.Add(output);
             }
-
-            Console.WriteLine("out: " + output);
             return output;
         }
 

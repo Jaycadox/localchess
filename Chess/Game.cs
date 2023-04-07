@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Numerics;
 using System.Diagnostics;
 using localChess.Assets;
+using localChess.Networking;
 
 namespace localChess.Chess
 {
@@ -23,6 +24,7 @@ namespace localChess.Chess
         public bool DidJustEnPassant { get; set; }
         public event EventHandler<Move>? OnMove;
         public bool DidJustPromote { get; set; }
+        public bool? LockedColour { get; set; }
         public long LastElapsedTicks;
 
         private static readonly Texture2D BoardTexture = Raylib.LoadTexture(AssetLoader.GetPath("Board.png"));
@@ -208,7 +210,8 @@ namespace localChess.Chess
             if (Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_LEFT) && mbPos.HasValue)
             {
                 var (x, y) = mbPos.Value;
-                if (At(x, y) is not null && At(x, y)!.Black == BlackPlaying)
+                var p = At(x, y);
+                if (p is not null && p.Black == BlackPlaying && (LockedColour is null || LockedColour == p.Black))
                 {
                     EngineBridge.GetMoves(this, GetIndex(x, y), EngineType);
                 }
@@ -221,6 +224,11 @@ namespace localChess.Chess
             {
                 if (SelectedIndex is null) return;
                 var (x, y) = mbPos.Value;
+
+                if (Program.Network.Communication.IsConnected())
+                {
+                    Program.Network.Communication.SendPacket(new MovePacket {FromIndex = SelectedIndex.Value, ToIndex = GetIndex(x, y)});
+                }
 
                 if ((LegalMoves is not null && LegalMoves.Contains(GetIndex(x, y))) 
                     && !PerformMove(new Move(SelectedIndex.Value, GetIndex(x, y))))
