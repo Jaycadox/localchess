@@ -23,6 +23,9 @@ namespace localChess.Chess
         [JsonIgnore]
         private float _currentEval;
 
+        [JsonIgnore]
+        public bool FlagHashMismatch;
+
         private string _opening = "...";
         private HttpClient? _client;
         private readonly List<string> _moveList = new();
@@ -393,16 +396,19 @@ namespace localChess.Chess
                 ImGui.BeginGroup();
                 ImGui.Text("Turn: " + (ActiveGame.BlackPlaying ? "Black" : "White"));
                 ImGui.Text("Opening: ");
+                ImGui.SameLine();
+                ImGui.Text(_opening);
+
                 if (ImGui.IsItemHovered())
                 {
                     ImGui.SetTooltip("Powered by Lichess");
                 }
 
-                ImGui.SameLine();
-                ImGui.Text(_opening);
-                if (ImGui.IsItemHovered())
+                if (FlagHashMismatch)
                 {
-                    ImGui.SetTooltip("Powered by Lichess");
+                    ImGui.TextColored(new Vector4(1, 1, 0, 1), "WARNING: ");
+                    ImGui.SameLine();
+                    ImGui.TextWrapped("A mismatch was detected in the version of localChess your opponent is using. They're either running an older/newer version or a modified one.");
                 }
 
                 ImGui.EndGroup();
@@ -732,7 +738,7 @@ namespace localChess.Chess
                 }
                 
                 ImGui.Separator();
-                if (ImGui.CollapsingHeader("Move checker / engine tester"))
+                if (!Program.Network.Communication.IsConnected() && ImGui.CollapsingHeader("Move checker / engine tester"))
                 {
                     ImGui.SliderInt("Check depth", ref CheckDepth, 0, 20);
                     if (ImGui.Button("Check"))

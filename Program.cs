@@ -1,5 +1,7 @@
-﻿using System.IO.Compression;
+﻿using System.Diagnostics;
+using System.IO.Compression;
 using System.Numerics;
+using System.Reflection;
 using ImGuiNET;
 using Raylib_cs;
 using RayWork.RLImgui;
@@ -9,6 +11,8 @@ using localChess.Properties;
 using localChess.Renderer;
 using System.Runtime.InteropServices;
 using localChess.Networking;
+using System.Security.Cryptography;
+using System.IO;
 
 namespace localChess
 {
@@ -73,6 +77,7 @@ namespace localChess
                 Console.WriteLine(@"[Client] Disconnected from server");
                 Raylib.SetWindowTitle("localChess");
                 ActiveGame!.LockedColour = null;
+                Gui!.FlagHashMismatch = false;
             });
             NetworkThread.Start();
         }
@@ -98,8 +103,17 @@ namespace localChess
                 Console.WriteLine(@"[Server] Disconnected from client");
                 Raylib.SetWindowTitle("localChess");
                 ActiveGame!.LockedColour = null;
+                Gui!.FlagHashMismatch = false;
             });
             NetworkThread.Start();
+        }
+
+        public static string Hash()
+        {
+            var path = Process.GetCurrentProcess().MainModule?.FileName!;
+            using var sha256 = SHA256.Create();
+            using var fileStream = File.OpenRead(path);
+            return Convert.ToBase64String(sha256.ComputeHash(fileStream));
         }
 
         static void Main(string[] args)
@@ -156,6 +170,12 @@ namespace localChess
                 {
                     ShowGui = !ShowGui;
                     Raylib.SetWindowSize(ShowGui ? Size * 2 : Size, Size);
+                }
+
+                if (Network.Communication.IsConnected() && new Random().Next(600) == 12) // Roughly every 10 seconds given 60fps
+                {
+                    // Application hash check
+                    Network.Communication.SendPacket(new HashPacket { Hash = Hash() });
                 }
             }
 

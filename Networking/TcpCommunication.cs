@@ -83,6 +83,9 @@ namespace localChess.Networking
                 case 2:
                     JsonSerializer.Deserialize<MovePacket>(data)!.Handle(Program.ActiveGame!);
                     break;
+                case 3:
+                    JsonSerializer.Deserialize<HashPacket>(data)!.Handle(Program.ActiveGame!);
+                    break;
             }
         }
 
