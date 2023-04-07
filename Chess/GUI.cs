@@ -272,8 +272,8 @@ namespace localChess.Chess
             new Thread(() =>
             {
                 _bestMove = new();
-                _eval = UCIEngine.Eval(_moveList) + "";
-                _bestMove = UCIEngine.GetBestMove(_moveList, PvCount);
+                _eval = UCIEngine.Eval(ActiveGame!) + "";
+                _bestMove = UCIEngine.GetBestMove(ActiveGame!, PvCount);
             }).Start();
 
             if (_moveList.Count > 10) return;

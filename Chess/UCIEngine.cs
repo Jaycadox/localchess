@@ -59,14 +59,14 @@ namespace localChess.Chess
             return output;
         }
 
-        public static List<List<string>> GetBestMove(List<string> moves, int pvCount = 3)
+        public static List<List<string>> GetBestMove(Game game, int pvCount = 3)
         {
             try
             {
                 List<string> lines;
                 var inputLines = new List<string>
                 {
-                    "setoption name MultiPV value " + pvCount, "position startpos moves " + string.Join(" ", moves),
+                    "setoption name MultiPV value " + pvCount, "position fen " + game.GetFen(),
                     "go depth " + Depth
                 };
 
@@ -122,14 +122,14 @@ namespace localChess.Chess
             
         }
 
-        public static float Eval(List<string> moves)
+        public static float Eval(Game game)
         {
             try
             {
                 List<string> lines;
                 var output = GetEngineResultIfContains(new List<string>
                 {
-                    "uci", "position startpos moves " + string.Join(" ", moves), "eval"
+                    "uci", "position fen " + game.GetFen(), "eval"
                 }, "Final evaluation", out lines);
 
                 var outputParts = output.Split('(');
