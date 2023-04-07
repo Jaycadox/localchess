@@ -1,5 +1,6 @@
 ﻿using System.IO.Compression;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -68,6 +69,9 @@ namespace localChess.Chess
 
         [JsonIgnore] public List<string> EngineNames = new();
 
+        [JsonIgnore] private string? _joinCode;
+        [JsonIgnore] private int _inputJoinCode = 0;
+
         [JsonInclude]
         public int SelectedEngine;
 
@@ -100,6 +104,32 @@ namespace localChess.Chess
             File.WriteAllText("C:\\localChess\\Settings.json", json);
         }
 
+        public static IPAddress? GetLocalIPv4Address()
+        {
+            foreach (var networkInterface in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (networkInterface.OperationalStatus != OperationalStatus.Up)
+                {
+                    continue;
+                }
+
+                string interfaceName = networkInterface.Name.ToLower();
+                if (interfaceName.Contains("wi-fi") || interfaceName.Contains("ethernet") || interfaceName.Contains("lan"))
+                {
+                    foreach (UnicastIPAddressInformation ipInfo in networkInterface.GetIPProperties().UnicastAddresses)
+                    {
+                        // Filter out non-IPv4 addresses
+                        if (ipInfo.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                        {
+                            return ipInfo.Address;
+                        }
+                    }
+                }
+            }
+
+            // Return null if no IPv4 address is found
+            return null;
+        }
         private int CountMoves(int depth, int maxDepth, Game selected)
         {
             if (depth == 0)
@@ -562,6 +592,29 @@ namespace localChess.Chess
                         Program.Network.Name = CfgName;
                         ImGui.SameLine();
                         ImGui.Checkbox("Play as black", ref CfgPrefersBlack);
+                        ImGui.Separator();
+                        ImGui.Text("Easy networking");
+                        ImGui.Separator();
+                        if (ImGui.Button("Generate join code"))
+                        {
+                            var ip = GetLocalIPv4Address()!.ToString().Split(".");
+                            var code = ip[3].PadLeft(3, '0') + ip[2];
+                            _joinCode = code;
+                            Program.StartServer(80);
+                        }
+
+                        ImGui.InputInt("Join code", ref _inputJoinCode);
+                        ImGui.SameLine();
+                        if (ImGui.Button("Join"))
+                        {
+                            var ip = GetLocalIPv4Address()!.ToString().Split(".");
+                            var beginIp = ip[0] + "." + ip[1] + "." + _inputJoinCode.ToString()[3..] + "." + _inputJoinCode.ToString()[..3].TrimStart('0');
+                            Console.WriteLine(beginIp);
+                            Program.Connect(beginIp, 80);
+                        }
+                        ImGui.Separator();
+                        ImGui.Text("Advanced networking");
+                        ImGui.Separator();
                         Program.Network.PrefersBlack = CfgPrefersBlack;
                         if (ImGui.IsItemHovered())
                         {
@@ -588,6 +641,20 @@ namespace localChess.Chess
                         {
                             ImGui.Text("Playing against: '" + Program.Network.PlayingAgainst + "'");
                             ImGui.Text("Playing as: " + (ActiveGame.LockedColour!.Value ? "black" : "white"));
+                            _joinCode = null;
+                        }
+                        else
+                        {
+                            var ip = GetLocalIPv4Address();
+                            if (ip is not null)
+                            {
+                                ImGui.Text("Your local IPv4 address is: " + ip);
+                            }
+                        }
+
+                        if (_joinCode is not null)
+                        {
+                            ImGui.Text("Join code: " + _joinCode);
                         }
                         if (ImGui.Button("Disconnect/end server"))
                         {

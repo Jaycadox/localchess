@@ -28,7 +28,7 @@ namespace localChess.Networking
             }
             else
             {
-                game.LockedColour = PlayingBlack;
+                game.LockedColour = Program.Gui?.CfgPrefersBlack;
             }
         }
     }

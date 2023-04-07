@@ -61,6 +61,7 @@ namespace localChess
                 {
                     Network.Communication.ConnectToServer(ip, port);
                     Console.WriteLine(@"[Client] Connected to server");
+                    Raylib.SetWindowTitle("(not so) localChess");
                     Network.Communication.ListenForever();
                 }
                 catch (Exception e)
@@ -70,6 +71,7 @@ namespace localChess
                     Network.Communication.Stop();
                 }
                 Console.WriteLine(@"[Client] Disconnected from server");
+                Raylib.SetWindowTitle("localChess");
                 ActiveGame!.LockedColour = null;
             });
             NetworkThread.Start();
@@ -84,6 +86,7 @@ namespace localChess
                 {
                     Network.Communication.StartServer(port);
                     Console.WriteLine(@"[Server] Connected to client");
+                    Raylib.SetWindowTitle("(not so) localChess");
                     Network.Communication.ListenForever();
                 }
                 catch (Exception e)
@@ -93,6 +96,7 @@ namespace localChess
                     Network.Communication.Stop();
                 }
                 Console.WriteLine(@"[Server] Disconnected from client");
+                Raylib.SetWindowTitle("localChess");
                 ActiveGame!.LockedColour = null;
             });
             NetworkThread.Start();
