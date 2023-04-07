@@ -201,7 +201,9 @@ namespace localChess.Chess
                 flags = black ? BullEngineFlags.Black : BullEngineFlags.White;
                 if (checkMate)
                 {
+#pragma warning disable CS8619 // Nullability of reference types in value doesn't match target type.
                     flags |= BullEngineFlags.Checkmate;
+#pragma warning restore CS8619 // Nullability of reference types in value doesn't match target type.
                 }
 
             }

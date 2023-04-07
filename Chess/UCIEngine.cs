@@ -1,16 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Diagnostics;
 
 namespace localChess.Chess
 {
-    internal class UCIEngine
+    internal class UciEngine
     {
         public static int Depth { get; set; } = 10;
-        public static Process? StockfishProcess = null;
+        public static Process? StockfishProcess;
         public static string Path = "";
         public static bool LimitElo = false;
         public static int Elo = 4000;
@@ -108,7 +103,7 @@ namespace localChess.Chess
 
                 if (outMoves.Count == 0)
                 {
-                    outMoves.Add(new() { output.Split(" ")[1] });
+                    outMoves.Add(new() { output!.Split(" ")[1] });
                 }
                 
                 return outMoves;
@@ -130,7 +125,7 @@ namespace localChess.Chess
                     "uci", "position fen " + game.GetFen(), "eval"
                 }, "Final evaluation", out lines);
 
-                var outputParts = output.Split('(');
+                var outputParts = output!.Split('(');
                 var evals = outputParts[0].Split("evaluation")[1].Trim().Trim('+').Trim('-');
 
                 var score = float.Parse(evals);

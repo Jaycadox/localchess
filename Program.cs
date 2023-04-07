@@ -22,10 +22,10 @@ namespace localChess
         {
             try
             {
-                UCIEngine.StockfishProcess?.Kill();
+                UciEngine.StockfishProcess?.Kill();
             } catch(Exception) {}
             
-            UCIEngine.StockfishProcess = null;
+            UciEngine.StockfishProcess = null;
             ActiveGame = new();
             Gui = Gui.LoadFromJson();
             Gui.ActiveGame = ActiveGame;

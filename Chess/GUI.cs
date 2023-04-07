@@ -311,8 +311,8 @@ namespace localChess.Chess
             new Thread(() =>
             {
                 _bestMove = new();
-                _eval = UCIEngine.Eval(ActiveGame!) + "";
-                _bestMove = UCIEngine.GetBestMove(ActiveGame!, PvCount);
+                _eval = UciEngine.Eval(ActiveGame!) + "";
+                _bestMove = UciEngine.GetBestMove(ActiveGame!, PvCount);
             }).Start();
 
             if (_moveList.Count > 10) return;
@@ -471,12 +471,12 @@ namespace localChess.Chess
                                 // ignored
                             }
                         }
-                    } else if (UCIEngine.StockfishProcess != null)
+                    } else if (UciEngine.StockfishProcess != null)
                     {
                         if (ImGui.Button("Kill"))
                         {
-                            UCIEngine.StockfishProcess.Kill();
-                            UCIEngine.StockfishProcess = null;
+                            UciEngine.StockfishProcess.Kill();
+                            UciEngine.StockfishProcess = null;
                         }
                             
                     }
@@ -548,10 +548,10 @@ namespace localChess.Chess
                         ImGui.Text("Est. ELO: " + (1000 + SkillLevel * 120));
                     }
 
-                    UCIEngine.SkillLevel = SkillLevel;
-                    UCIEngine.UseSkillLevel = UseSkillLevel;
-                    UCIEngine.Elo = Elo;
-                    UCIEngine.LimitElo = LimitElo;
+                    UciEngine.SkillLevel = SkillLevel;
+                    UciEngine.UseSkillLevel = UseSkillLevel;
+                    UciEngine.Elo = Elo;
+                    UciEngine.LimitElo = LimitElo;
 
                     ImGui.SliderInt("Play n'th move", ref NthBestMove, 1, Depth * PvCount);
                     ImGui.Checkbox("Hide best-move", ref HideBestMove);
@@ -563,9 +563,9 @@ namespace localChess.Chess
                         EvaluateMove();
                     }
                     ImGui.ListBox("Auto-perform as", ref PlayAs, new List<string> { "White", "Black", "Both" }.ToArray(), 3);
-                    UCIEngine.Depth = Depth;
+                    UciEngine.Depth = Depth;
                     ImGui.InputText("Stockfish path", ref Path, 400);
-                    UCIEngine.Path = Path;
+                    UciEngine.Path = Path;
                     
                     if (ImGui.Button("Download", new Vector2(ImGui.GetContentRegionAvail().X, 18)))
                     {
