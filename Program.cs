@@ -52,7 +52,7 @@ namespace localChess
             Raylib.InitWindow(720 * 2, 720, "localChess");
             Raylib.SetExitKey(KeyboardKey.KEY_END);
             RlImgui.Setup(() => new Vector2(720 * 2, 720));
-            Texture2D board = Raylib.LoadTexture(AssetLoader.GetPath("Board.png"));
+            
             PieceRenderer.Prepare();
 
             
@@ -69,7 +69,7 @@ namespace localChess
                     Gui = GUI.LoadFromJson();
                     if (!Gui.ShowConsole)
                     {
-                        Program.ShowWindow(Program.GetConsoleWindow(), Program.SW_HIDE);
+                        ShowWindow(Program.GetConsoleWindow(), Program.SW_HIDE);
                     }
                     Gui.ActiveGame = ActiveGame;
                     Gui.Init();
@@ -77,8 +77,7 @@ namespace localChess
                 }
 
                 Raylib.ClearBackground(Color.WHITE);
-                Raylib.DrawTexture(board, 0, 0, Color.WHITE);
-                
+
 
 
                 ActiveGame.OnTick();
@@ -92,6 +91,8 @@ namespace localChess
                 
                 Raylib.EndDrawing();
             }
+
+            ShowWindow(Program.GetConsoleWindow(), Program.SW_SHOW);
 
             Gui?.SaveToJson();
 

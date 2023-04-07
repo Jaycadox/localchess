@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Numerics;
 using System.Threading.Tasks.Sources;
 using System.Diagnostics;
+using localChess.Assets;
 
 namespace localChess.Chess
 {
@@ -17,13 +18,15 @@ namespace localChess.Chess
         public List<Flags>? FlagsList;
         public Dictionary<int, Action<Game>>? SpecialMoves;
         public EngineBridge.EngineType EngineType = EngineBridge.EngineType.Alpaca;
-
+        public int DisplaySize = 720;
         public bool BlackPlaying { get; set; }
         public int? EnPassantIndex { get; set; }
         public bool DidJustEnPassant { get; set; }
         public event EventHandler<Move> OnMove;
         public bool DidJustPromote { get; set; }
         public long LastElapsedTicks = 0;
+
+        private Texture2D BoardTexture = Raylib.LoadTexture(AssetLoader.GetPath("Board.png"));
 
         public static Game FromFen(string fen)
         {
@@ -36,6 +39,7 @@ namespace localChess.Chess
             var board = parts[0];
             int row = 0, col = 0;
             Piece?[] newBoard = new Piece[8 * 8];
+            Game game = new();
 
             foreach (var chr in board)
             {
@@ -52,11 +56,11 @@ namespace localChess.Chess
                     continue;
                 }
 
-                newBoard[GetIndex(col, row)] = Move.ConsumePiece(chr);
+                newBoard[GetIndex(col, row)] = Move.ConsumePiece(chr, game);
                 ++col;
             }
 
-            Game game = new();
+            
             game.Board = newBoard;
 
             var playing = parts[1];
@@ -132,35 +136,35 @@ namespace localChess.Chess
 
             foreach(var row in new[]{ 0, 7 })
             {
-                At(0, row) = new Piece(PieceType.Rook, row == 0);
-                At(1, row) = new Piece(PieceType.Knight, row == 0);
-                At(2, row) = new Piece(PieceType.Bishop, row == 0);
-                At(3, row) = new Piece(PieceType.Queen, row == 0);
-                At(4, row) = new Piece(PieceType.King, row == 0);
-                At(5, row) = new Piece(PieceType.Bishop, row == 0);
-                At(6, row) = new Piece(PieceType.Knight, row == 0);
-                At(7, row) = new Piece(PieceType.Rook, row == 0);
+                At(0, row) = new Piece(PieceType.Rook, row == 0, this);
+                At(1, row) = new Piece(PieceType.Knight, row == 0, this);
+                At(2, row) = new Piece(PieceType.Bishop, row == 0, this);
+                At(3, row) = new Piece(PieceType.Queen, row == 0, this);
+                At(4, row) = new Piece(PieceType.King, row == 0, this);
+                At(5, row) = new Piece(PieceType.Bishop, row == 0, this);
+                At(6, row) = new Piece(PieceType.Knight, row == 0, this);
+                At(7, row) = new Piece(PieceType.Rook, row == 0, this);
             }
 
             foreach (var row in new[] { 1, 6 })
             {
                 for (var i = 0; i < 8; i++)
                 {
-                    At(i, row) = new Piece(PieceType.Pawn, row == 1);
+                    At(i, row) = new Piece(PieceType.Pawn, row == 1, this);
                 }
             }
         }
 
-        public static (int x , int y)? GetMouseBoardPosition()
+        public (int x , int y)? GetMouseBoardPosition()
         {
             var (x, y) = (Raylib.GetMousePosition().X, Raylib.GetMousePosition().Y);
 
-            if (x > 720 || y > 720)
+            if (x > DisplaySize || y > DisplaySize)
             {
                 return null;
             }
 
-            return ((int)x / 90, (int)y / 90);
+            return ((int)x / (DisplaySize / 8), (int)y / (DisplaySize / 8));
         }
 
         public bool PerformMove(Move move)
@@ -333,6 +337,11 @@ namespace localChess.Chess
 
         public void Render(int x, int y)
         {
+            
+            var scale = DisplaySize / 720.0f;
+            var pieceSize = (int)(90.0f * scale);
+
+            Raylib.DrawTextureEx(BoardTexture, new Vector2(x, y), 0, scale, Color.WHITE);
             for (var px = 0; px < 8; px++)
             {
                 for (var py = 0; py < 8; py++)
@@ -349,20 +358,20 @@ namespace localChess.Chess
                         {
                             if (FlagsList.Contains(Chess.Flags.WhiteInCheck) && !piece.Black)
                             {
-                                Raylib.DrawRectangle(px * 90, py * 90, 90, 90, new Color(255, 128, 128, 255));
+                                Raylib.DrawRectangle(px * pieceSize, py * pieceSize, pieceSize, pieceSize, new Color(255, 128, 128, 255));
                             }
 
                             if (FlagsList.Contains(Chess.Flags.BlackInCheck) && piece.Black)
                             {
-                                Raylib.DrawRectangle(px * 90, py * 90, 90, 90, new Color(255, 128, 128, 255));
+                                Raylib.DrawRectangle(px * pieceSize, py * pieceSize, pieceSize, pieceSize, new Color(255, 128, 128, 255));
                             }
                             if (FlagsList.Contains(item: Chess.Flags.WhiteInCheckmate) && !piece.Black)
                             {
-                                Raylib.DrawRectangle(px * 90, py * 90, 90, 90, new Color(255, 0, 0, 255));
+                                Raylib.DrawRectangle(px * pieceSize, py * pieceSize, pieceSize, pieceSize, new Color(255, 0, 0, 255));
                             }
                             if (FlagsList.Contains(Chess.Flags.BlackInCheckmate) && piece.Black)
                             {
-                                Raylib.DrawRectangle(px * 90, py * 90, 90, 90, new Color(255, 0, 0, 255));
+                                Raylib.DrawRectangle(px * pieceSize, py * pieceSize, pieceSize, pieceSize, new Color(255, 0, 0, 255));
                             }
                         }
                     }

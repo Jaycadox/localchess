@@ -12,16 +12,18 @@ namespace localChess.Chess
         public PieceType Type { get; set; }
         public int MoveCount { get; set; }
         public bool Black { get; }
+        public Game ActiveGame { get; set; }
 
-        public Piece(PieceType type, bool black)
+        public Piece(PieceType type, bool black, Game game)
         {
             Type = type;
             Black = black;
+            ActiveGame = game;
         }
 
         public Piece Clone()
         {
-            return new Piece(Type, Black)
+            return new Piece(Type, Black, ActiveGame)
             {
                 MoveCount = MoveCount
             };
@@ -29,12 +31,12 @@ namespace localChess.Chess
 
         public void RenderAbsolute(int x, int y)
         {
-            PieceRenderer.Render(Type, Black, ((float)x / 720.0f) * 8.0f, ((float)y / 720.0f) * 8.0f);
+            PieceRenderer.Render(Type, Black, ((float)x / ActiveGame.DisplaySize) * 8.0f, ((float)y / ActiveGame.DisplaySize) * 8.0f, (ActiveGame.DisplaySize / 720.0f) * 90.0f);
         }
 
         public void Render(int x, int y)
         {
-            PieceRenderer.Render(Type, Black, x, y);
+            PieceRenderer.Render(Type, Black, x, y, (ActiveGame.DisplaySize / 720.0f) * 90.0f);
         }
     }
 }

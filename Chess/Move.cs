@@ -105,7 +105,7 @@ namespace localChess.Chess
                 _ => null
             };
         }
-        public static Piece ConsumePiece(char piece)
+        public static Piece ConsumePiece(char piece, Game game)
         {
             var type = PieceType.Pawn;
 
@@ -131,7 +131,7 @@ namespace localChess.Chess
                     break;
             }
 
-            return new Piece(type, !char.IsUpper(piece));
+            return new Piece(type, !char.IsUpper(piece), game);
         }
 
         private static (int? x, int? y) ConsumeRowOrCol(ref string input)

@@ -30,24 +30,30 @@ namespace localChess.Renderer
             PieceSpritesheet = Raylib.LoadTexture(AssetLoader.GetPath("Pieces.png"));
         }
 
-        public static void Render(PieceType type, bool black, float x, float y)
+        public static void Render(PieceType type, bool black, float x, float y, float pieceScale)
         {
-            var (finalX, finalY) = (x * 90.0f, y * 90.0f);
+            var (finalX, finalY) = (x * pieceScale, y * pieceScale);
 
             var dict = black ? BlackPieceRenderers : WhitePieceRenderers;
             var renderer = dict[type];
-            renderer.Render((int) finalX, (int) finalY);
+            renderer.RenderScaled((int) finalX, (int) finalY, pieceScale);
 
         }
-        public void Render(int x, int y)
+
+        public void RenderScaled(int x, int y, float pieceScale)
         {
             var sheetX = (int)Type * 90;
             var sheetY = Black ? 90 : 0;
 
-            Raylib.DrawTexturePro(PieceSpritesheet,
+            Raylib.DrawTextureTiled(PieceSpritesheet,
                 new Rectangle(sheetX, sheetY, 90, 90),
-                new Rectangle(x, y, 90, 90),
-                Vector2.Zero, 0, Color.WHITE);
+                new Rectangle(x, y, pieceScale, pieceScale),
+                Vector2.Zero, 0, pieceScale / 90.0f, Color.WHITE);
+        }
+
+        public void Render(int x, int y)
+        {
+            RenderScaled(x, y, 90);
         }
     }
 }

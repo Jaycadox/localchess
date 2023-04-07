@@ -329,13 +329,13 @@ namespace localChess.Chess
             //ImGui.GetFont().Scale = 1.8f;
             if (ShowEvalBar)
             {
-                ImGui.SetNextWindowPos(new Vector2(750, 0));
-                ImGui.SetNextWindowSize(new Vector2(720 - (750 - 720), 720));
+                ImGui.SetNextWindowPos(new Vector2(ActiveGame.DisplaySize + 30, 0));
+                ImGui.SetNextWindowSize(new Vector2(ActiveGame.DisplaySize - 30, ActiveGame.DisplaySize));
             }
             else
             {
-                ImGui.SetNextWindowPos(new Vector2(720, 0));
-                ImGui.SetNextWindowSize(new Vector2(720, 720));
+                ImGui.SetNextWindowPos(new Vector2(ActiveGame.DisplaySize, 0));
+                ImGui.SetNextWindowSize(new Vector2(ActiveGame.DisplaySize, ActiveGame.DisplaySize));
             }
             
             //ImGui.GetStyle().Colors[ImGuiCol.table]
@@ -457,7 +457,7 @@ namespace localChess.Chess
                     ImGui.Checkbox("Show bar", ref ShowEvalBar);
                     ImGui.SameLine();
                     ImGui.Checkbox("Show move PV list", ref ShowOtherMoves);
-                    if (ShowOtherMoves && ImGui.BeginChild("movepvc", new Vector2(720, 300)))
+                    if (ShowOtherMoves && ImGui.BeginChild("movepvc", new Vector2(ActiveGame.DisplaySize, 300)))
                     {
                         if (ImGui.BeginTable("movepvs", 3))
                         {
@@ -623,7 +623,7 @@ namespace localChess.Chess
 
             if (ShowEvalBar)
             {
-                ImGui.GetBackgroundDrawList().AddRectFilled(new Vector2(720, 0), new Vector2(750, 720),
+                ImGui.GetBackgroundDrawList().AddRectFilled(new Vector2(ActiveGame.DisplaySize, 0), new Vector2(ActiveGame.DisplaySize + 30, ActiveGame.DisplaySize),
                     ImGui.ColorConvertFloat4ToU32(new Vector4(0.05f, 0.05f, 0.05f, 1.0f)));
                 float Lerp(float a, float b, float t)
                 {
@@ -631,15 +631,15 @@ namespace localChess.Chess
                 }
 
                 _currentEval = Lerp(_currentEval, float.Parse(_eval), 0.2f);
-                ImGui.GetBackgroundDrawList().AddRectFilled(new Vector2(720, 720), new Vector2(750, 720 / 2 - (720 / 2 * _currentEval)),
+                ImGui.GetBackgroundDrawList().AddRectFilled(new Vector2(ActiveGame.DisplaySize, ActiveGame.DisplaySize), new Vector2(ActiveGame.DisplaySize + 30, ActiveGame.DisplaySize / 2 - (ActiveGame.DisplaySize / 2 * _currentEval)),
                     ImGui.ColorConvertFloat4ToU32(new Vector4(0.9f, 0.9f, 0.9f, 1.0f)));
             }
 
-            if (Game.GetMouseBoardPosition().HasValue && ActiveGame.SelectedIndex is not null)
+            if (ActiveGame.GetMouseBoardPosition().HasValue && ActiveGame.SelectedIndex is not null)
             {
                 if (ActiveGame.Board[ActiveGame.SelectedIndex.Value] is null) return;
                 if (ActiveGame.Board[ActiveGame.SelectedIndex.Value].Type != PieceType.Pawn) return;
-                var mousePos = Game.GetMouseBoardPosition();
+                var mousePos = ActiveGame.GetMouseBoardPosition();
                 var mousePosIndex = Game.GetIndex(mousePos.Value.x, mousePos.Value.y);
                 foreach (var move in ActiveGame.LegalMoves)
                 {
