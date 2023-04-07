@@ -1,34 +1,34 @@
 ﻿using System.Diagnostics;
 using System.IO.Compression;
 using System.Numerics;
-using System.Reflection;
-using ImGuiNET;
 using Raylib_cs;
 using RayWork.RLImgui;
-using localChess.Assets;
 using localChess.Chess;
 using localChess.Properties;
 using localChess.Renderer;
 using System.Runtime.InteropServices;
 using localChess.Networking;
 using System.Security.Cryptography;
-using System.IO;
 
 namespace localChess
 {
     internal class Program
     {
-        public static Game? ActiveGame = null;
+        public static Game? ActiveGame;
         public static NetworkConfig Network = new();
-        public static Gui? Gui = null;
+        public static Gui? Gui;
 
         public static void Reset()
         {
             try
             {
                 UciEngine.StockfishProcess?.Kill();
-            } catch(Exception) {}
-            
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
+
             UciEngine.StockfishProcess = null;
             ActiveGame = new();
             Gui = Gui.LoadFromJson();
@@ -42,17 +42,17 @@ namespace localChess
 
         [DllImport("user32.dll")]
         public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-        public const int SW_HIDE = 0;
-        public const int SW_SHOW = 5;
+        public const int SwHide = 0;
+        public const int SwShow = 5;
         public static bool ShowGui = true;
         public const int Size = 720;
-        public static Thread? NetworkThread = null;
+        public static Thread? NetworkThread;
 
         public static void NetworkSetup()
         {
-            Network.Communication.OnConnect += (_, game) =>
+            Network.Communication.OnConnect += (_, _) =>
             {
-                Network.Communication.SendPacket(new UserInfoPacket() {Name = Network.Name, PlayingBlack = Network.PrefersBlack});
+                Network.Communication.SendPacket(new UserInfoPacket() {Name = Network.Name, PlayingBlack = Network.PrefersBlack, Fen = ActiveGame!.GetFen()});
             };
         }
 
@@ -116,7 +116,7 @@ namespace localChess
             return Convert.ToBase64String(sha256.ComputeHash(fileStream));
         }
 
-        static void Main(string[] args)
+        static void Main()
         {
             NetworkSetup();
             Raylib.SetTraceLogLevel(TraceLogLevel.LOG_WARNING);
@@ -137,6 +137,11 @@ namespace localChess
             while (!Raylib.WindowShouldClose())
             {
                 Raylib.BeginDrawing();
+                if (Raylib.IsKeyPressed(KeyboardKey.KEY_F1))
+                {
+                    ShowGui = !ShowGui;
+                    Raylib.SetWindowSize(ShowGui ? Size * 2 : Size, Size);
+                }
                 Raylib.DrawText("Loading...", 0, 0, 64, Color.WHITE);
                 if (ActiveGame is null)
                 {
@@ -145,7 +150,7 @@ namespace localChess
                     Gui = Gui.LoadFromJson();
                     if (!Gui.ShowConsole)
                     {
-                        ShowWindow(Program.GetConsoleWindow(), Program.SW_HIDE);
+                        ShowWindow(Program.GetConsoleWindow(), Program.SwHide);
                     }
                     Gui.ActiveGame = ActiveGame;
                     Gui.Init();
@@ -163,14 +168,10 @@ namespace localChess
                     RlImgui.End();
                     Gui.PostRender();
                 }
-
+                
                 Raylib.EndDrawing();
 
-                if (Raylib.IsKeyPressed(KeyboardKey.KEY_F1))
-                {
-                    ShowGui = !ShowGui;
-                    Raylib.SetWindowSize(ShowGui ? Size * 2 : Size, Size);
-                }
+                
 
                 if (Network.Communication.IsConnected() && new Random().Next(600) == 12) // Roughly every 10 seconds given 60fps
                 {
@@ -179,7 +180,7 @@ namespace localChess
                 }
             }
 
-            ShowWindow(Program.GetConsoleWindow(), Program.SW_SHOW);
+            ShowWindow(Program.GetConsoleWindow(), Program.SwShow);
 
             Gui?.SaveToJson();
             Network.Communication.Stop();

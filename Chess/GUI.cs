@@ -383,6 +383,8 @@ namespace localChess.Chess
                     {
                         mv = Move.FromUci(flatBestMoves[moveSelected--]);
                     } while (!ActiveGame.PerformMove(mv) && moveSelected >= 0);
+
+                    EvaluateMove();
                 }
                 catch (Exception)
                 {
@@ -413,7 +415,6 @@ namespace localChess.Chess
 
                 ImGui.EndGroup();
                 ImGui.GetBackgroundDrawList().AddRectFilled(ImGui.GetItemRectMin(), ImGui.GetItemRectMax(), ImGui.ColorConvertFloat4ToU32(new Vector4(0.1f, 0.1f, 0.1f, 1)));
-                ImGui.Separator();
                 ImGui.BeginGroup();
                 if (!Program.Network.Communication.IsConnected() && ImGui.Button("Reset game"))
                 {
@@ -444,8 +445,6 @@ namespace localChess.Chess
                     ImGui.TextWrapped("Engine description: " + EngineBridge.GetDescription(ActiveGame.EngineType));
                     ImGui.Text("Last engine time: " + ActiveGame.LastElapsedTicks + " ticks.");
                 }
-
-                ImGui.Separator();
                 if (!Program.Network.Communication.IsConnected() && ImGui.CollapsingHeader("Stockfish", ImGuiTreeNodeFlags.DefaultOpen))
                 {
                     var bestMove = "";
@@ -589,7 +588,6 @@ namespace localChess.Chess
                         Path = "C:\\localChess\\stockfish_15.1_win_x64_avx2\\stockfish-windows-2022-x86-64-avx2.exe";
                     }
                 }
-                ImGui.Separator();
                 if (ImGui.CollapsingHeader("Networking"))
                 {
                     if (!Program.Network.Communication.IsConnected())
@@ -669,7 +667,6 @@ namespace localChess.Chess
                     }
                     
                 }
-                ImGui.Separator();
                 if (!Program.Network.Communication.IsConnected() && ImGui.CollapsingHeader("FEN loader"))
                 {
                     ImGui.InputText("FEN string", ref CurrentFen, 128);
@@ -736,8 +733,6 @@ namespace localChess.Chess
 
                     ImGui.Separator();
                 }
-                
-                ImGui.Separator();
                 if (!Program.Network.Communication.IsConnected() && ImGui.CollapsingHeader("Move checker / engine tester"))
                 {
                     ImGui.SliderInt("Check depth", ref CheckDepth, 0, 20);
@@ -746,9 +741,6 @@ namespace localChess.Chess
                         Console.WriteLine(@"Depth: " + CheckDepth + @", Moves: " + CountMoves(CheckDepth, CheckDepth, ActiveGame.Copy()));
                     }
                 }
-                
-                ImGui.Separator();
-
                 if (ImGui.CollapsingHeader("Move history"))
                 {
                     if (ImGui.BeginTable("movehistory", 3))
@@ -786,7 +778,7 @@ namespace localChess.Chess
             if (ImGui.Checkbox("Show console", ref ShowConsole))
             {
                 Console.Clear();
-                Program.ShowWindow(Program.GetConsoleWindow(), ShowConsole ? Program.SW_SHOW : Program.SW_HIDE);
+                Program.ShowWindow(Program.GetConsoleWindow(), ShowConsole ? Program.SwShow : Program.SwHide);
                 Console.WriteLine(@"localChess -- made by jayphen");
             }
 
