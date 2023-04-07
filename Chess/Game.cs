@@ -18,7 +18,7 @@ namespace localChess.Chess
         public List<Flags>? FlagsList;
         public Dictionary<int, Action<Game>>? SpecialMoves;
         public EngineBridge.EngineType EngineType = EngineBridge.EngineType.Alpaca;
-        public int DisplaySize = 720;
+        public int DisplaySize = 360;
         public bool BlackPlaying { get; set; }
         public int? EnPassantIndex { get; set; }
         public bool DidJustEnPassant { get; set; }
@@ -215,15 +215,6 @@ namespace localChess.Chess
                 
             }
 
-            if (LegalMoves is not null)
-            {
-                foreach (var move in LegalMoves)
-                {
-                    var (x, y) = GetPos(move);
-                    Raylib.DrawRectangle(x * 90, y * 90, 90, 90, new Color(255, 255, 0, 50));
-                }
-            }
-
             if ((Raylib.IsMouseButtonReleased(MouseButton.MOUSE_BUTTON_LEFT) || Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_LEFT)) && GetMouseBoardPosition().HasValue)
             {
                 if (SelectedIndex is not null)
@@ -337,7 +328,6 @@ namespace localChess.Chess
 
         public void Render(int x, int y)
         {
-            
             var scale = DisplaySize / 720.0f;
             var pieceSize = (int)(90.0f * scale);
 
@@ -381,12 +371,21 @@ namespace localChess.Chess
                 }
             }
 
+            if (LegalMoves is not null)
+            {
+                foreach (var move in LegalMoves)
+                {
+                    var (px, py) = GetPos(move);
+                    Raylib.DrawRectangle(px * pieceSize, py * pieceSize, pieceSize, pieceSize, new Color(255, 255, 0, 50));
+                }
+            }
+
             if (SelectedIndex is not null && Raylib.IsMouseButtonDown(MouseButton.MOUSE_BUTTON_LEFT) && GetMouseBoardPosition().HasValue)
             {
                 var piece = Board[(int)SelectedIndex];
 
-                piece?.RenderAbsolute((int)Raylib.GetMousePosition().X - 45,
-                    (int)Raylib.GetMousePosition().Y - 45);
+                piece?.RenderAbsolute((int)Raylib.GetMousePosition().X - (pieceSize / 2),
+                    (int)Raylib.GetMousePosition().Y - (pieceSize / 2));
             }
         }
     }
