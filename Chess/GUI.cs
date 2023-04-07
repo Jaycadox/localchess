@@ -519,7 +519,7 @@ namespace localChess.Chess
                     ImGui.SameLine();
                     ImGui.Checkbox("Auto-perform", ref AutoPerform);
                     ImGui.SameLine();
-                    if (ImGui.Button("Force re-evaluate"))
+                    if (ImGui.Button("Force re-evaluate", new Vector2(ImGui.GetContentRegionAvail().X, 18)))
                     {
                         EvaluateMove();
                     }
@@ -528,7 +528,7 @@ namespace localChess.Chess
                     ImGui.InputText("Stockfish path", ref Path, 400);
                     UCIEngine.Path = Path;
                     
-                    if (ImGui.Button("Download"))
+                    if (ImGui.Button("Download", new Vector2(ImGui.GetContentRegionAvail().X, 18)))
                     {
                         try
                         {
@@ -549,7 +549,7 @@ namespace localChess.Chess
                 {
                     ImGui.InputText("FEN string", ref CurrentFen, 128);
                     ImGui.SameLine();
-                    if (ImGui.Button("Load"))
+                    if (ImGui.Button("Load", new Vector2(ImGui.GetContentRegionAvail().X, 18)))
                     {
                         var game = Game.FromFen(CurrentFen);
                         Program.ActiveGame = game;
@@ -558,7 +558,7 @@ namespace localChess.Chess
 
                     ImGui.Text("Current FEN: " + ActiveGame!.GetFen());
                     ImGui.SameLine();
-                    if (ImGui.Button("Copy to clipboard"))
+                    if (ImGui.Button("Copy to clipboard", new Vector2(ImGui.GetContentRegionAvail().X, 18)))
                     {
                         Raylib.SetClipboardText(ActiveGame.GetFen());
                     }
@@ -568,7 +568,7 @@ namespace localChess.Chess
 
                     void Preset(string name, string fen)
                     {
-                        if (ImGui.Button(name))
+                        if (ImGui.Button(name, new Vector2(ImGui.GetContentRegionAvail().X, 25)))
                         {
                             var game = Game.FromFen(fen);
                             Program.ActiveGame = game;
@@ -589,6 +589,9 @@ namespace localChess.Chess
                         }
                     }
 
+                    var oldItemSpacing = ImGui.GetStyle().ItemSpacing;
+
+                    ImGui.GetStyle().ItemSpacing = new Vector2(0, 0);
                     Preset("Ral's Trapped Queens Variant", "r1b1kb1r/Pp1ppppp/qP6/Pp6/pP6/Qp6/pP1PPPPP/R1B1KB1R w KQkq - 0 1");
                     Preset("Promotion Prevention", "5bnr/5ppp/5pkp/5ppp/PPP5/PKP5/PPP5/RNB5 w - - 0 1");
                     Preset("Ral's Trapped Kings Variant", "5bnr/5ppp/5pkp/5ppp/PPP5/PKP5/PPP5/RNB5 w - - 0 1");
@@ -604,6 +607,7 @@ namespace localChess.Chess
                     Preset("Cat and Mouse", "b1b1b1bk/ppp1P1pp/4P3/4P3/4P3/4P3/P3P2P/4KBNR w - - 0 1");
                     Preset("Super KID", "r1bqnrkr/pppbnnbp/3p1qp1/3Pp3/2P1Pp2/B1NN1P2/PPRQBBPP/R2QNRK1 w - - 0 13");
                     Preset("Overly Ambitious", "k1nqn3/p1p1p1p1/PpPpPpPp/1P1P1P1P/8/8/6NN/6NK w - - 0 1");
+                    ImGui.GetStyle().ItemSpacing = oldItemSpacing;
 
                     ImGui.Separator();
                 }
@@ -675,6 +679,7 @@ namespace localChess.Chess
                     ImGui.ColorConvertFloat4ToU32(new Vector4(0.9f, 0.9f, 0.9f, 1.0f)));
             }
 
+            ImGui.End();
             if (ActiveGame.GetMouseBoardPosition().HasValue && ActiveGame.SelectedIndex is not null)
             {
                 if (ActiveGame.Board[ActiveGame.SelectedIndex.Value] is null) return;
