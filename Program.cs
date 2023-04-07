@@ -38,6 +38,8 @@ namespace localChess
         public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
         public const int SW_HIDE = 0;
         public const int SW_SHOW = 5;
+        public static bool ShowGui = true;
+        public const int Size = 720;
 
         static void Main(string[] args)
         {
@@ -49,14 +51,12 @@ namespace localChess
                 ZipFile.ExtractToDirectory("C:\\localChessHelper\\bundle.zip", "C:\\");
             }
 
-            Raylib.InitWindow(720 * 2, 720, "localChess");
+            Raylib.InitWindow(Size * 2, Size, "localChess");
             Raylib.SetExitKey(KeyboardKey.KEY_END);
-            RlImgui.Setup(() => new Vector2(720 * 2, 720));
+            RlImgui.Setup(() => new Vector2(ShowGui ? Size * 2 : Size, Size));
             
             PieceRenderer.Prepare();
 
-            
-            
             Raylib.SetTargetFPS(60);
             while (!Raylib.WindowShouldClose())
             {
@@ -78,8 +78,6 @@ namespace localChess
 
                 Raylib.ClearBackground(Color.WHITE);
 
-
-
                 ActiveGame.OnTick();
                 ActiveGame.Render(0, 0);
                 if (Gui is not null)
@@ -89,8 +87,14 @@ namespace localChess
                     RlImgui.End();
                     Gui.PostRender();
                 }
-                
+
                 Raylib.EndDrawing();
+
+                if (Raylib.IsKeyPressed(KeyboardKey.KEY_SPACE))
+                {
+                    ShowGui = !ShowGui;
+                    Raylib.SetWindowSize(ShowGui ? Size * 2 : Size, Size);
+                }
             }
 
             ShowWindow(Program.GetConsoleWindow(), Program.SW_SHOW);

@@ -594,7 +594,7 @@ namespace localChess.Chess
                     ImGui.GetStyle().ItemSpacing = new Vector2(0, 0);
                     Preset("Ral's Trapped Queens Variant", "r1b1kb1r/Pp1ppppp/qP6/Pp6/pP6/Qp6/pP1PPPPP/R1B1KB1R w KQkq - 0 1");
                     Preset("Promotion Prevention", "5bnr/5ppp/5pkp/5ppp/PPP5/PKP5/PPP5/RNB5 w - - 0 1");
-                    Preset("Ral's Trapped Kings Variant", "5bnr/5ppp/5pkp/5ppp/PPP5/PKP5/PPP5/RNB5 w - - 0 1");
+                    Preset("Ral's Trapped Kings Variant", "r2q1nnr/Pp1ppppp/kP6/Pp6/pP6/Kp6/pP1PPPPP/R2Q1NNR w - - 0 1");
                     Preset("Ral's Lunar Eclipse Position", "k3r2r/pnbpPb2/1pp2Pp1/1p4P1/1p4P1/1Pp2PP1/2BpPBNP/R2R3K w - - 0 1");
                     Preset("Danger", "2bb1bb1/2ppp3/8/3p4/B1pkp1B1/2RpR3/1p1P1p2/1N1K1N2 w - - 0 1");
                     Preset("Miserable Kings", "1kr1qbnr/3bpppp/2np4/8/8/4PN2/PPPPB3/RNBQ1RK1 w - - 0 1");
