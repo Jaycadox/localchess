@@ -58,6 +58,7 @@ namespace localChess
 
         public static void Connect(string ip, int port)
         {
+            Gui!.ChatHistory.Clear();
             NetworkThread = new(() =>
             {
                 Network.PlayingAgainst = null;
@@ -78,12 +79,14 @@ namespace localChess
                 Raylib.SetWindowTitle("localChess");
                 ActiveGame!.LockedColour = null;
                 Gui!.FlagHashMismatch = false;
+                Gui!.ChatHistory.Clear();
             });
             NetworkThread.Start();
         }
 
         public static void StartServer(int port)
         {
+            Gui!.ChatHistory.Clear();
             NetworkThread = new(() =>
             {
                 Network.PlayingAgainst = null;
@@ -104,6 +107,7 @@ namespace localChess
                 Raylib.SetWindowTitle("localChess");
                 ActiveGame!.LockedColour = null;
                 Gui!.FlagHashMismatch = false;
+                Gui!.ChatHistory.Clear();
             });
             NetworkThread.Start();
         }

@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using ImGuiNET;
+using localChess.Networking;
 using Raylib_CsLo;
 
 namespace localChess.Chess
@@ -73,7 +74,10 @@ namespace localChess.Chess
         [JsonIgnore] public List<string> EngineNames = new();
 
         [JsonIgnore] private string? _joinCode;
+        [JsonIgnore] private string _textComposed = "";
         [JsonIgnore] private int _inputJoinCode = 0;
+        [JsonIgnore] public List<(string, string)> ChatHistory = new();
+        [JsonIgnore] public bool ScrollChatWindow = false;
 
         [JsonInclude]
         public int SelectedEngine;
@@ -588,6 +592,7 @@ namespace localChess.Chess
                         Path = "C:\\localChess\\stockfish_15.1_win_x64_avx2\\stockfish-windows-2022-x86-64-avx2.exe";
                     }
                 }
+
                 if (ImGui.CollapsingHeader("Networking"))
                 {
                     if (!Program.Network.Communication.IsConnected())
@@ -643,9 +648,51 @@ namespace localChess.Chess
                     {
                         if (Program.Network.PlayingAgainst is not null)
                         {
+                            AutoPerform = false;
                             ImGui.Text("Playing against: '" + Program.Network.PlayingAgainst + "'");
                             ImGui.Text("Playing as: " + (ActiveGame.LockedColour!.Value ? "black" : "white"));
                             _joinCode = null;
+                            ImGui.BeginGroup();
+                            ImGui.Text("Chat");
+                            ImGui.Separator();
+                            if (ImGui.BeginChild("chatwindow", new Vector2(ImGui.GetContentRegionAvail().X, 200)))
+                            {
+                                foreach (var (username, message) in ChatHistory)
+                                {
+                                    ImGui.TextWrapped(username + " : ");
+                                    ImGui.SameLine();
+                                    ImGui.TextWrapped(message);
+                                    ImGui.Separator();
+                                }
+                                if (ScrollChatWindow)
+                                {
+                                    ImGui.SetScrollHereY(1.0f);
+                                    ScrollChatWindow = false;
+                                }
+                                ImGui.EndChild();
+                            }
+
+                            ImGui.TextColored(new Vector4(1.0f, 1.0f, 0.0f, 1.0f), "WARNING: ");
+                            ImGui.SameLine();
+                            ImGui.Text("Messages are unencrypted and easily observable");
+                            var enterPressed = ImGui.InputText("##chatinput", ref _textComposed, 256, ImGuiInputTextFlags.EnterReturnsTrue);
+                            if (enterPressed)
+                            {
+                                ImGui.SetKeyboardFocusHere(-1);
+                            }
+
+                            ImGui.SameLine();
+                            if (ImGui.Button("Send", new Vector2(ImGui.GetContentRegionAvail().X, 18)) || enterPressed && _textComposed.Trim().Length != 0)
+                            {
+                                var composed = _textComposed.Trim();
+                                _textComposed = "";
+
+                                ChatHistory.Add((Program.Network.Name, composed));
+                                Program.Network.Communication.SendPacket(new ChatPacket { Content = composed });
+                                ScrollChatWindow = true;
+                            }
+                            ImGui.EndGroup();
+                            ImGui.GetForegroundDrawList().AddRect(ImGui.GetItemRectMin(), ImGui.GetItemRectMax(), ImGui.ColorConvertFloat4ToU32(new Vector4(0.8f, 0.8f, 0.8f, 1)));
                         }
                         else
                         {

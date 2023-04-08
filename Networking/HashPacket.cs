@@ -4,7 +4,7 @@ namespace localChess.Networking
 {
     internal class HashPacket : Packet
     {
-        public string Hash { get; set; }
+        public string Hash { get; set; } = "";
 
         public HashPacket()
         {
