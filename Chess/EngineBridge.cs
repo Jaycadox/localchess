@@ -175,8 +175,22 @@
                             foreach (var mv1 in moveList)
                             {
                                 game.Board[mv1.FromIndex]!.MoveCount++;
+                                if (game.Board[mv1.ToIndex] is not null)
+                                {
+                                    if (game.FadeOuts.ContainsKey(mv1.ToIndex))
+                                    {
+                                        game.FadeOuts.Remove(mv1.ToIndex);
+                                    }
+                                    game.FadeOuts.Add(mv1.ToIndex, (game.Board[mv1.ToIndex]!.Clone(), 1.0f));
+                                }
+
                                 game.Board[mv1.ToIndex] = game.Board[mv1.FromIndex];
                                 game.Board[mv1.FromIndex] = null;
+                                if (game.Animations.ContainsKey(mv1.ToIndex))
+                                {
+                                    game.Animations.Remove(mv1.ToIndex);
+                                }
+                                game.Animations.Add(mv1.ToIndex, (mv1.FromIndex, 0.0f));
                             }
 
                             game.LegalMoves = null;

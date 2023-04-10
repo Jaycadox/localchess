@@ -5,6 +5,8 @@ using System.Numerics;
 using System.Diagnostics;
 using localChess.Assets;
 using localChess.Networking;
+using System.Threading.Tasks.Sources;
+using System.Net.WebSockets;
 
 namespace localChess.Chess
 {
@@ -19,6 +21,9 @@ namespace localChess.Chess
         public int HalfMoveClock;
         public EngineBridge.EngineType EngineType = EngineBridge.EngineType.Alpaca;
         public int DisplaySize = 720;
+        //                to   from  step
+        public Dictionary<int, (int, float)> Animations = new();
+        public Dictionary<int, (Piece, float)> FadeOuts = new();
         public bool BlackPlaying { get; set; }
         public int? EnPassantIndex { get; set; }
         public bool DidJustEnPassant { get; set; }
@@ -340,43 +345,91 @@ namespace localChess.Chess
             var pieceSize = (int)(90.0f * scale);
 
             Raylib.DrawTextureEx(BoardTexture, new Vector2(x, y), 0, scale, Color.WHITE);
+
+            void RenderSinglePiece(Piece? piece, int px1, int py1, float alpha = 1.0f, bool animate = true)
+            {
+                var mbPos = GetMouseBoardPosition();
+                var pIndex = GetIndex(px1, py1);
+                var (visualPx, visualPy) = ((float)px1, (float)py1);
+
+                if (Animations.ContainsKey(pIndex) && animate)
+                {
+                    Animations[pIndex] = (Animations[pIndex].Item1,
+                        Animations[pIndex].Item2 + 0.01f + ((1.0f - Animations[pIndex].Item2) * 0.2f));
+                    var speed = Animations[pIndex].Item2;
+                    var (fromX, fromY) = GetPos(Animations[pIndex].Item1);
+                    visualPx = Gui.Lerp(fromX, px1, speed);
+                    visualPy = Gui.Lerp(fromY, py1, speed);
+
+                    if (Animations[pIndex].Item2 >= 1.0f)
+                    {
+                        visualPx = px1;
+                        visualPy = py1;
+                        Animations.Remove(pIndex);
+                    }
+                }
+
+                if (SelectedIndex == pIndex && Raylib.IsMouseButtonDown(MouseButton.MOUSE_BUTTON_LEFT) && mbPos.HasValue)
+                {
+                    return;
+                }
+
+                if (FlagsList is not null && piece is not null)
+                {
+                    if (piece.Type == PieceType.King)
+                    {
+                        if (FlagsList.Contains(Flags.WhiteInCheck) && !piece.Black)
+                        {
+                            Raylib.DrawRectangle(px1 * pieceSize + x, py1 * pieceSize + y, pieceSize, pieceSize,
+                                new Color(255, 128, 128, 255));
+                        }
+
+                        if (FlagsList.Contains(Flags.BlackInCheck) && piece.Black)
+                        {
+                            Raylib.DrawRectangle(px1 * pieceSize + x, py1 * pieceSize + y, pieceSize, pieceSize,
+                                new Color(255, 128, 128, 255));
+                        }
+
+                        if (FlagsList.Contains(item: Flags.WhiteInCheckmate) && !piece.Black)
+                        {
+                            Raylib.DrawRectangle(px1 * pieceSize + x, py1 * pieceSize + y, pieceSize, pieceSize,
+                                new Color(255, 0, 0, 255));
+                        }
+
+                        if (FlagsList.Contains(Flags.BlackInCheckmate) && piece.Black)
+                        {
+                            Raylib.DrawRectangle(px1 * pieceSize + x, py1 * pieceSize + y, pieceSize, pieceSize,
+                                new Color(255, 0, 0, 255));
+                        }
+                    }
+                }
+
+
+                piece?.Render((visualPx * pieceSize + x) / pieceSize, (visualPy * pieceSize + y) / pieceSize, alpha);
+            }
+
+            foreach (var fadeOut in FadeOuts.Select(e => e).ToList())
+            {
+                var (foX, foY) = GetPos(fadeOut.Key);
+                FadeOuts[fadeOut.Key] = (FadeOuts[fadeOut.Key].Item1, FadeOuts[fadeOut.Key].Item2 - 0.05f);
+                if (FadeOuts[fadeOut.Key].Item2 <= 0.0f)
+                {
+                    FadeOuts.Remove(fadeOut.Key);
+                }
+                else
+                {
+                    RenderSinglePiece(FadeOuts[fadeOut.Key].Item1, foX, foY, FadeOuts[fadeOut.Key].Item2, false);
+                }
+                
+
+                
+            }
+
             for (var px = 0; px < 8; px++)
             {
                 for (var py = 0; py < 8; py++)
                 {
-                    var mbPos = GetMouseBoardPosition();
-                    if (SelectedIndex == GetIndex(px, py) && Raylib.IsMouseButtonDown(MouseButton.MOUSE_BUTTON_LEFT) && mbPos.HasValue)
-                    {
-                        continue;
-                    }
-
-                    var piece = At(px, py);
-                    if (FlagsList is not null && piece is not null)
-                    {
-                        if (piece.Type == PieceType.King)
-                        {
-                            if (FlagsList.Contains(Flags.WhiteInCheck) && !piece.Black)
-                            {
-                                Raylib.DrawRectangle(px * pieceSize + x, py * pieceSize + y, pieceSize, pieceSize, new Color(255, 128, 128, 255));
-                            }
-
-                            if (FlagsList.Contains(Flags.BlackInCheck) && piece.Black)
-                            {
-                                Raylib.DrawRectangle(px * pieceSize + x, py * pieceSize + y, pieceSize, pieceSize, new Color(255, 128, 128, 255));
-                            }
-                            if (FlagsList.Contains(item: Flags.WhiteInCheckmate) && !piece.Black)
-                            {
-                                Raylib.DrawRectangle(px * pieceSize + x, py * pieceSize + y, pieceSize, pieceSize, new Color(255, 0, 0, 255));
-                            }
-                            if (FlagsList.Contains(Flags.BlackInCheckmate) && piece.Black)
-                            {
-                                Raylib.DrawRectangle(px * pieceSize + x, py * pieceSize + y, pieceSize, pieceSize, new Color(255, 0, 0, 255));
-                            }
-                        }
-                    }
-                    
-
-                    piece?.Render((px * pieceSize + x) / (float)pieceSize, (py * pieceSize + y) / (float)pieceSize);
+                    RenderSinglePiece(At(px, py), px, py);
                 }
             }
 

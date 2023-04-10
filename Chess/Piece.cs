@@ -29,9 +29,9 @@ namespace localChess.Chess
             PieceRenderer.Render(Type, Black, ((float)x / ActiveGame!.DisplaySize) * 8.0f, ((float)y / ActiveGame.DisplaySize) * 8.0f, (ActiveGame.DisplaySize / 720.0f) * 90.0f);
         }
 
-        public void Render(float x, float y)
+        public void Render(float x, float y, float alpha = 1.0f)
         {
-            PieceRenderer.Render(Type, Black, x, y, (ActiveGame!.DisplaySize / 720.0f) * 90.0f);
+            PieceRenderer.Render(Type, Black, x, y, (ActiveGame!.DisplaySize / 720.0f) * 90.0f, alpha);
         }
         public void Render(int x, int y)
         {

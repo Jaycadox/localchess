@@ -146,7 +146,7 @@ namespace localChess.Chess
             return null;
         }
 
-        float Lerp(float a, float b, float t)
+        public static float Lerp(float a, float b, float t)
         {
             return a + (b - a) * t;
         }
