@@ -71,7 +71,6 @@ namespace localChess.Networking
             Stream stream = _client.GetStream();
             stream.Write(compressedBytes, 0, compressedBytes.Length);
             stream.Flush();
-            Console.WriteLine("compression smaller by: " + (dataToSend.Length - compressedBytes.Length));
         }
 
         public bool IsConnected()
