@@ -78,6 +78,10 @@ namespace localChess.Chess
         [JsonIgnore] private int _inputJoinCode = 0;
         [JsonIgnore] public List<(string, string)> ChatHistory = new();
         [JsonIgnore] public bool ScrollChatWindow = false;
+        [JsonIgnore] public int MouseX = -1;
+        [JsonIgnore] public int MouseY = -1;
+        [JsonIgnore] public int TargetMouseX = -1;
+        [JsonIgnore] public int TargetMouseY = -1;
 
         [JsonInclude]
         public int SelectedEngine;
@@ -94,6 +98,10 @@ namespace localChess.Chess
         public string CfgIp = "10.0.0.1";
         [JsonInclude]
         public int CfgPort = 80;
+        [JsonIgnore]
+        public int MouseOpacity;
+        [JsonInclude]
+        public bool BroadcastMousePos;
 
         public void PostRender()
         {
@@ -137,6 +145,12 @@ namespace localChess.Chess
             // Return null if no IPv4 address is found
             return null;
         }
+
+        float Lerp(float a, float b, float t)
+        {
+            return a + (b - a) * t;
+        }
+
         private int CountMoves(int depth, int maxDepth, Game selected)
         {
             if (depth == 0)
@@ -358,6 +372,25 @@ namespace localChess.Chess
             var moveSelected = Math.Min(flatBestMoves.Count - 1, NthBestMove - 1);
 
             _frameCount++;
+            if (BroadcastMousePos && _frameCount % 5 == 0 && Program.Network.Communication.IsConnected() && Program.Network.PlayingAgainst is not null)
+            {
+                Program.Network.Communication.SendPacket(new MousePosPacket
+                    { X = Raylib.GetMouseX(), Y = Raylib.GetMouseY() });
+            }
+
+            if (TargetMouseX != -1 && TargetMouseY != -1 && Program.Network.Communication.IsConnected())
+            {
+                MouseX = (int)Lerp(MouseX, TargetMouseX, 0.18f);
+                MouseY = (int)Lerp(MouseY, TargetMouseY, 0.18f);
+                _postRenderList.Add(() =>
+                {
+                    Raylib.DrawCircle(MouseX, MouseY, 12,
+                        new Color(255, 0, 0, MouseOpacity));
+                });
+                
+            }
+            if(MouseOpacity >= 2)
+                MouseOpacity -= 2;
 
             if (_frameCount % 60 == 0)
             {
@@ -651,6 +684,7 @@ namespace localChess.Chess
                             AutoPerform = false;
                             ImGui.Text("Playing against: '" + Program.Network.PlayingAgainst + "'");
                             ImGui.Text("Playing as: " + (ActiveGame.LockedColour!.Value ? "black" : "white"));
+                            ImGui.Checkbox("Broadcast mouse position", ref BroadcastMousePos);
                             _joinCode = null;
                             ImGui.BeginGroup();
                             ImGui.Text("Chat");
@@ -833,11 +867,6 @@ namespace localChess.Chess
             {
                 ImGui.GetBackgroundDrawList().AddRectFilled(new Vector2(ActiveGame.DisplaySize, 0), new Vector2(ActiveGame.DisplaySize + 30, ActiveGame.DisplaySize),
                     ImGui.ColorConvertFloat4ToU32(new Vector4(0.05f, 0.05f, 0.05f, 1.0f)));
-                float Lerp(float a, float b, float t)
-                {
-                    return a + (b - a) * t;
-                }
-
                 _currentEval = Lerp(_currentEval, float.Parse(_eval), 0.2f);
                 ImGui.GetBackgroundDrawList().AddRectFilled(new Vector2(ActiveGame.DisplaySize, ActiveGame.DisplaySize),
                     new Vector2(ActiveGame.DisplaySize + 30,

@@ -59,6 +59,8 @@ namespace localChess
         public static void Connect(string ip, int port)
         {
             Gui!.ChatHistory.Clear();
+            Gui!.TargetMouseX = -1;
+            Gui!.TargetMouseY = -1;
             NetworkThread = new(() =>
             {
                 Network.PlayingAgainst = null;
@@ -73,8 +75,8 @@ namespace localChess
                 {
                     Console.WriteLine(e.Message);
                     Console.WriteLine(e.StackTrace);
-                    Network.Communication.Stop();
                 }
+                Network.Communication.Stop();
                 Console.WriteLine(@"[Client] Disconnected from server");
                 Raylib.SetWindowTitle("localChess");
                 ActiveGame!.LockedColour = null;
@@ -87,6 +89,8 @@ namespace localChess
         public static void StartServer(int port)
         {
             Gui!.ChatHistory.Clear();
+            Gui!.TargetMouseX = -1;
+            Gui!.TargetMouseY = -1;
             NetworkThread = new(() =>
             {
                 Network.PlayingAgainst = null;
@@ -101,8 +105,8 @@ namespace localChess
                 {
                     Console.WriteLine(e.Message);
                     Console.WriteLine(e.StackTrace);
-                    Network.Communication.Stop();
                 }
+                Network.Communication.Stop();
                 Console.WriteLine(@"[Server] Disconnected from client");
                 Raylib.SetWindowTitle("localChess");
                 ActiveGame!.LockedColour = null;
