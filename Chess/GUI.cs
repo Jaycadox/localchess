@@ -478,10 +478,10 @@ namespace localChess.Chess
                 if (ImGui.CollapsingHeader("Internal engine"))
                 {
                     ImGui.ListBox("Internal engine", ref SelectedEngine, EngineNames.ToArray(), EngineNames.Count);
-                    ActiveGame.EngineType = EngineTypes[SelectedEngine];
                     ImGui.TextWrapped("Engine description: " + EngineBridge.GetDescription(ActiveGame.EngineType));
                     ImGui.Text("Last engine time: " + ActiveGame.LastElapsedTicks + " ticks.");
                 }
+                ActiveGame.EngineType = EngineTypes[SelectedEngine];
                 if (!Program.Network.Communication.IsConnected() && ImGui.CollapsingHeader("Stockfish", ImGuiTreeNodeFlags.DefaultOpen))
                 {
                     var bestMove = "";
