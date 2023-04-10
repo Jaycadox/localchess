@@ -706,9 +706,19 @@ namespace localChess.Chess
                                 ImGui.EndChild();
                             }
 
-                            ImGui.TextColored(new Vector4(1.0f, 1.0f, 0.0f, 1.0f), "WARNING: ");
-                            ImGui.SameLine();
-                            ImGui.Text("Messages are unencrypted and easily observable");
+                            if (Program.Network.SentKeys && Program.Network.PeerPublicKey is not null)
+                            {
+                                ImGui.TextColored(new Vector4(0.0f, 1.0f, 0.0f, 1.0f), "INFO: ");
+                                ImGui.SameLine();
+                                ImGui.Text("Network traffic is end-to-end encrypted, messages cannot be read by 3rd parties");
+                            }
+                            else
+                            {
+                                ImGui.TextColored(new Vector4(1.0f, 1.0f, 0.0f, 1.0f), "WARNING: ");
+                                ImGui.SameLine();
+                                ImGui.Text("Messages are unencrypted and easily observable");
+                            }
+                            
                             var enterPressed = ImGui.InputText("##chatinput", ref _textComposed, 256, ImGuiInputTextFlags.EnterReturnsTrue);
                             if (enterPressed)
                             {

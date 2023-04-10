@@ -52,7 +52,8 @@ namespace localChess
         {
             Network.Communication.OnConnect += (_, _) =>
             {
-                Network.Communication.SendPacket(new UserInfoPacket() {Name = Network.Name, PlayingBlack = Network.PrefersBlack, Fen = ActiveGame!.GetFen()});
+                Network.Communication.SendPacket(new UserInfoPacket() {Name = Network.Name, PlayingBlack = Network.PrefersBlack, Fen = ActiveGame!.GetFen(), PublicKey = Network.PublicKey });
+                Network.SentKeys = true;
             };
         }
 
@@ -64,6 +65,7 @@ namespace localChess
             NetworkThread = new(() =>
             {
                 Network.PlayingAgainst = null;
+                Network.RegenerateKeys();
                 try
                 {
                     Network.Communication.ConnectToServer(ip, port);
@@ -94,6 +96,7 @@ namespace localChess
             NetworkThread = new(() =>
             {
                 Network.PlayingAgainst = null;
+                Network.RegenerateKeys();
                 try
                 {
                     Network.Communication.StartServer(port);
@@ -124,7 +127,7 @@ namespace localChess
             return Convert.ToBase64String(sha256.ComputeHash(fileStream));
         }
 
-        static void Main()
+        public static void Main()
         {
             NetworkSetup();
             Raylib.SetTraceLogLevel(TraceLogLevel.LOG_WARNING);
@@ -181,7 +184,7 @@ namespace localChess
 
                 
 
-                if (Network.Communication.IsConnected() && new Random().Next(600) == 12) // Roughly every 10 seconds given 60fps
+                if (Network.Communication.IsConnected() && new Random().Next(600) == 12 && Network.PlayingAgainst is not null) // Roughly every 10 seconds given 60fps
                 {
                     // Application hash check
                     Network.Communication.SendPacket(new HashPacket { Hash = Hash() });

@@ -6,7 +6,7 @@ namespace localChess.Networking
     {
         public string Name { get; set; } = "A localChess user";
         public string Fen { get; set; } = "";
-
+        public byte[] PublicKey { get; set; } = { };
         public bool? PlayingBlack { get; set; } = null;
 
         public UserInfoPacket()
@@ -28,6 +28,8 @@ namespace localChess.Networking
             {
                 Program.ActiveGame!.LockedColour = Program.Gui?.CfgPrefersBlack;
             }
+
+            Program.Network.PeerPublicKey = PublicKey;
         }
     }
 }

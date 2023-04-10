@@ -4,6 +4,8 @@ using localChess.Chess;
 using System.Text;
 using System.Text.Json;
 using System.IO.Compression;
+using System.Security.Cryptography.X509Certificates;
+using System.Security.Cryptography;
 
 namespace localChess.Networking
 {
@@ -68,6 +70,14 @@ namespace localChess.Networking
                 compressedBytes = ms.ToArray();
             }
 
+            if (Program.Network.PeerPublicKey is not null && Program.Network.SentKeys)
+            {
+                using var rsaEncrypt = new RSACryptoServiceProvider();
+                rsaEncrypt.ImportRSAPublicKey(Program.Network.PeerPublicKey!, out var bytesRead);
+                compressedBytes = rsaEncrypt.Encrypt(compressedBytes, false);
+            }
+            
+
             Stream stream = _client.GetStream();
             stream.Write(compressedBytes, 0, compressedBytes.Length);
             stream.Flush();
@@ -93,6 +103,14 @@ namespace localChess.Networking
                 var bytesRead = stream.Read(receivedData, 0, receivedData.Length);
                 var result = new byte[bytesRead];
                 Array.Copy(receivedData, result, bytesRead);
+
+                if (Program.Network.PeerPublicKey is not null && Program.Network.SentKeys)
+                {
+                    using var rsaEncrypt = new RSACryptoServiceProvider();
+                    rsaEncrypt.ImportRSAPrivateKey(Program.Network.PrivateKey, out var bytesRead_);
+                    result = rsaEncrypt.Decrypt(result, false);
+                }
+
                 using var ms = new MemoryStream(result);
                 using var deflateStream = new DeflateStream(ms, CompressionMode.Decompress);
                 using var decompressedMs = new MemoryStream();
