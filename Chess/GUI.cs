@@ -332,7 +332,9 @@ namespace localChess.Chess
             new Thread(() =>
             {
                 _bestMove = new();
-                _eval = UciEngine.Eval(ActiveGame!) + "";
+                var eval = UciEngine.Eval(ActiveGame!);
+                if(eval > -500)
+                    _eval = eval + "";
                 _bestMove = UciEngine.GetBestMove(ActiveGame!, PvCount);
             }).Start();
 

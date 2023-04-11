@@ -223,6 +223,22 @@ namespace localChess.Chess
                 
             }
 
+            if (FlagsList is not null && FlagsList.Count == 1)
+            {
+                var black = FlagsList.Contains(Flags.BlackInCheck) || FlagsList.Contains(Flags.BlackInCheckmate);
+                for (var i = 0; i < 8 * 8; i++)
+                {
+                    var p = Board[i];
+                    if (p is not null && p.Type == PieceType.King && p.Black == black)
+                    {
+                        var oldLegalMoves = LegalMoves;
+                        EngineBridge.GetMoves(this, i, EngineType);
+                        LegalMoves = oldLegalMoves;
+                        break;
+                    }
+                }
+            }
+
             if ((Raylib.IsMouseButtonReleased(MouseButton.MOUSE_BUTTON_LEFT) ||
                  Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_LEFT)) &&
                 mbPos.HasValue)
