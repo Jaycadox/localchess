@@ -26,7 +26,7 @@
             return "No description given";
         }
 
-        public static void GetMoves(Game game, int index, EngineType engineType)
+        public static void GetMoves(Game game, int index, EngineType engineType, bool setFlags = false)
         {
             switch (engineType)
             {
@@ -46,10 +46,11 @@
                     if (result.moves.Count != 0)
                     {
                         game.LegalMoves = result.moves.Select((e) => e.Item1.ToIndex).ToList();
-                        game.SelectedIndex = index;
+                        if(!setFlags)
+                            game.SelectedIndex = index;
                     }
 
-                    if (result.flags is null) return;
+                    if (result.flags is null || !setFlags) return;
                     if ((result.flags & BullEngineFlags.Black) != 0)
                     {
                         game.FlagsList = new() { Flags.BlackInCheck };
@@ -204,26 +205,6 @@
                             break;
                         }
 
-                        result = BullEngine.GetLegalMovesFor((ushort)move.FromIndex, game.Board, game.BlackPlaying, null, true);
-                        if (result.flags is not null)
-                        {
-                            if ((result.flags & BullEngineFlags.Black) != 0)
-                            {
-                                game.FlagsList = new() { Flags.BlackInCheck };
-                                if ((result.flags & BullEngineFlags.Checkmate) != 0)
-                                {
-                                    game.FlagsList.Add(Flags.BlackInCheckmate);
-                                }
-                            }
-                            else
-                            {
-                                game.FlagsList = new() { Flags.WhiteInCheck };
-                                if ((result.flags & BullEngineFlags.Checkmate) != 0)
-                                {
-                                    game.FlagsList.Add(Flags.WhiteInCheckmate);
-                                }
-                            }
-                        }
                     }
 
                     break;

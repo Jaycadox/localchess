@@ -35,11 +35,15 @@ namespace localChess.Chess
                 if (i != index)
                 {
                     var (x, y) = Game.GetPos(i);
+                    if (board[i]!.Type == PieceType.King && (Math.Abs(kingX - x) > 1 && Math.Abs(kingX - y) > 1))
+                    {
+                        continue;
+                    }
                     if (board[i]!.Type == PieceType.Pawn && (Math.Abs(kingX - x) > 1 || Math.Abs(kingX - y) > 2))
                     {
                         continue;
                     }
-                    if (board[i]!.Type == PieceType.Rook && Math.Abs(kingX - x) > 1 && Math.Abs(kingY - y) > 1)
+                    if (board[i]!.Type == PieceType.Rook && ((kingX == x && kingY != y) || (kingX != x && kingY == y) || (kingX != x && kingY != y)))
                     {
                         continue;
                     }

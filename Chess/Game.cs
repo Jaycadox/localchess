@@ -224,18 +224,17 @@ namespace localChess.Chess
                 
             }
 
-            if (FlagsList is not null && FlagsList.Count == 1)
+            if (EngineType == EngineBridge.EngineType.Bull)
             {
-                var black = FlagsList.Contains(Flags.BlackInCheck) || FlagsList.Contains(Flags.BlackInCheckmate);
                 for (var i = 0; i < 8 * 8; i++)
                 {
                     var p = Board[i];
-                    if (p is not null && p.Type == PieceType.King && p.Black == black)
+                    if (p is not null && p.Type == PieceType.King && p.Black == BlackPlaying)
                     {
                         var oldLegalMoves = LegalMoves;
-                        EngineBridge.GetMoves(this, i, EngineType);
+                        EngineBridge.GetMoves(this, i, EngineType, true);
                         LegalMoves = oldLegalMoves;
-                        break;
+
                     }
                 }
             }
