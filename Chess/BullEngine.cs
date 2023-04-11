@@ -35,7 +35,7 @@ namespace localChess.Chess
                 if (i != index)
                 {
                     var (x, y) = Game.GetPos(i);
-                    if (board[i]!.Type == PieceType.Pawn && !(x == kingX + 1 || x == kingY - 1))
+                    if (board[i]!.Type == PieceType.Pawn && (Math.Abs(kingX - x) > 1 || Math.Abs(kingX - y) > 2))
                     {
                         continue;
                     }
@@ -109,7 +109,8 @@ namespace localChess.Chess
 
             if (enPassantIndex is not null && board[index]!.Type == PieceType.Pawn && !inCheck && !onlyCareAboutCheck)
             {
-                if (index - 1 == enPassantIndex || index + 1 == enPassantIndex)
+                var (x, _) = Game.GetPos(index);
+                if ((index - 1 == enPassantIndex && x != 0) || (index + 1 == enPassantIndex && x != 7))
                 {
                     if (black)
                     {
@@ -286,8 +287,9 @@ namespace localChess.Chess
                 {
                     if (AddCapturingMove(index, Game.GetIndex(x, y - 1), false).moved && y == 6)
                     {
-                        AddCapturingMove(index, Game.GetIndex(x, y - 2));
+                        AddCapturingMove(index, Game.GetIndex(x, y - 2), false);
                     }
+                    
                     AddCapturingMove(index, Game.GetIndex(x + 1, y - 1), true, true);
                     AddCapturingMove(index, Game.GetIndex(x - 1, y - 1), true, true);
                     break;
@@ -298,6 +300,7 @@ namespace localChess.Chess
                     {
                         AddCapturingMove(index, Game.GetIndex(x, y + 2), false);
                     }
+                    
                     AddCapturingMove(index, Game.GetIndex(x + 1, y + 1), true, true);
                     AddCapturingMove(index, Game.GetIndex(x - 1, y + 1), true, true);
                     break;

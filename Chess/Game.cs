@@ -109,6 +109,7 @@ namespace localChess.Chess
                 SpecialMoves = SpecialMoves,
                 EnPassantIndex = EnPassantIndex,
                 DidJustEnPassant = DidJustEnPassant,
+                EngineType = EngineType
             };
 
             return game;

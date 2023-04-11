@@ -166,7 +166,7 @@ namespace localChess.Chess
                 if (board[i] is null) continue;
                 if (board[i]!.Black != selected.BlackPlaying) continue;
 
-                if (ActiveGame!.EngineType == EngineBridge.EngineType.Bull)
+                if (ActiveGame!.EngineType == EngineBridge.EngineType.Alpaca)
                 {
                     var intMoves = Engine.GetLegalMovesFor(i, selected, true, PieceType.Queen, selected.EnPassantIndex);
                     List<Move> moves = new();
@@ -235,35 +235,23 @@ namespace localChess.Chess
                         }
                     }
                 }
-                else
+                else if(ActiveGame.EngineType == EngineBridge.EngineType.Bull)
                 {
-                    var intMoves = BullEngine.GetLegalMovesFor((ushort)i, selected.Board, true, selected.EnPassantIndex).moves;
+                    var intMoves = BullEngine.GetLegalMovesFor((ushort)i, selected.Board, selected.BlackPlaying, selected.EnPassantIndex).moves;
                     if (depth == maxDepth)
                     {
-                        var threads = new List<Thread>();
-                        foreach (var mv in intMoves)
+                        Parallel.ForEach(intMoves, new ParallelOptions()
+                        {
+                            MaxDegreeOfParallelism = 16
+                        },(mv) =>
                         {
                             var move = mv.Item1;
                             var game = selected.Copy();
-                            if (!game.PerformMove(move)) continue;
-
-                            var thread = new Thread(() =>
-                            {
-                                var moveCount = CountMoves(depth - 1, maxDepth, game);
-                                Interlocked.Add(ref numPositions, moveCount);
-                                Console.WriteLine(move.ToUci() + @": " + moveCount);
-                            })
-                            {
-                                IsBackground = true
-                            };
-                            thread.Start();
-                            threads.Add(thread);
-                        }
-
-                        foreach (var thread in threads)
-                        {
-                            thread.Join();
-                        }
+                            if (!game.PerformMove(move)) return;
+                            var moveCount = CountMoves(depth - 1, maxDepth, game);
+                            Interlocked.Add(ref numPositions, moveCount);
+                            Console.WriteLine(move.ToUci() + @": " + moveCount);
+                        });
                     }
                     else
                     {
