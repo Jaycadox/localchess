@@ -43,7 +43,7 @@ namespace localChess.Chess
                     {
                         continue;
                     }
-                    if (board[i]!.Type == PieceType.Rook && ((kingX == x && kingY != y) || (kingX != x && kingY == y) || (kingX != x && kingY != y)))
+                    if (board[i]!.Type == PieceType.Rook && Math.Abs(kingX - x) > 1 && Math.Abs(kingY - y) > 1)
                     {
                         continue;
                     }

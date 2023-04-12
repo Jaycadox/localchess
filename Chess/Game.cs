@@ -98,7 +98,7 @@ namespace localChess.Chess
             CreateDefaultBoard();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public Game Copy()
         {
             var game = new Game
@@ -115,20 +115,20 @@ namespace localChess.Chess
             return game;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public static int GetIndex(int x, int y)
         {
             if (x < 0 || y < 0 || x >= 8 || y >= 8) return -1;
             return 8 * y + x;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public static (int x, int y) GetPos(int index)
         {
             return (index % 8, index / 8);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         private ref Piece? At(int x, int y)
         {
             return ref Board[GetIndex(x, y)];
@@ -224,18 +224,40 @@ namespace localChess.Chess
                 
             }
 
+            // This is probably slow in terms of a frame-rate perspective, but allows us to have faster engine times
+            
             if (EngineType == EngineBridge.EngineType.Bull)
             {
+                var isCheck = false;
+                var isCheckmate = false;
                 for (var i = 0; i < 8 * 8; i++)
                 {
                     var p = Board[i];
-                    if (p is not null && p.Type == PieceType.King && p.Black == BlackPlaying)
+                    if (p is not null && p.Black == BlackPlaying)
                     {
-                        var oldLegalMoves = LegalMoves;
-                        EngineBridge.GetMoves(this, i, EngineType, true);
-                        LegalMoves = oldLegalMoves;
-
+                        var r = BullEngine.GetLegalMovesFor((ushort)i, Board, BlackPlaying, EnPassantIndex, true);
+                        if (r.flags is not null && (r.flags & BullEngineFlags.Checkmate) != 0)
+                        {
+                            isCheckmate = true;
+                            if (isCheck)
+                            {
+                                break;
+                            }
+                        } else if (r.flags is not null)
+                        {
+                            isCheck = true;
+                            break;
+                        }
                     }
+                }
+                if (isCheck)
+                {
+                    FlagsList = new() { BlackPlaying ? Flags.BlackInCheck : Flags.WhiteInCheck };
+                }
+                else if (isCheckmate)
+                {
+                    FlagsList = new() { BlackPlaying ? Flags.BlackInCheck : Flags.WhiteInCheck };
+                    FlagsList = new() { BlackPlaying ? Flags.BlackInCheckmate : Flags.WhiteInCheckmate };
                 }
             }
 
