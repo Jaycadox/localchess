@@ -7,6 +7,7 @@ using localChess.Assets;
 using localChess.Networking;
 using System.Threading.Tasks.Sources;
 using System.Net.WebSockets;
+using System.Linq;
 
 namespace localChess.Chess
 {
@@ -98,12 +99,55 @@ namespace localChess.Chess
             CreateDefaultBoard();
         }
 
+        public ulong Transposition(int index)
+        {
+            ulong current = 0;
+            for (ulong i = 0; i < 8 * 8; i++)
+            {
+                i %= 64;
+                current += i * 0b1010001010011001011100100001000000011010101110010100101100010010;
+                current += (current + (ulong)index) << 10;
+                current ^= (current + (ulong)index) >> 6;
+                current ^= 0b1010001010011001011100100001000000011010101110010100101100010010;
+                var p = Board[i];
+                if (p is null)
+                {
+                    current ^= 0b111111110110011010011001101111111001011100100001010111010011101;
+                    continue;
+                }
+
+                var pType = (ulong)p.Type;
+                current ^= 0b110010110111100001001010010111101000100111110001001001111011100 * (ulong)pType;
+
+                if (p.Black)
+                {
+                    current ^= 0b110010110111100001001010010111101000100111110001001001111011100 * (ulong)pType;
+                    current += current * (ulong)index << (int)(5 * pType);
+                    current ^= current >> 26;
+                }
+            }
+
+            if (EnPassantIndex is not null)
+            {
+                current += current << 8;
+                current ^= 0b001100000110001110010111010111001011101000101011000010100101111 * ((ulong)EnPassantIndex);
+            }
+
+            if (BlackPlaying)
+            {
+                current += current << 15;
+                current ^= 0b010100111111011100100010001101001001001011001001111011001101001;
+            }
+
+            return current;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public Game Copy()
         {
             var game = new Game
             {
-                Board = Board.Select(a => a?.Clone()).ToArray(),
+                Board = Board.Select(a => a).ToArray(),
                 BlackPlaying = BlackPlaying,
                 FlagsList = FlagsList,
                 SpecialMoves = SpecialMoves,
@@ -229,24 +273,20 @@ namespace localChess.Chess
             if (EngineType == EngineBridge.EngineType.Bull)
             {
                 var isCheck = false;
-                var isCheckmate = false;
+                var isCheckmate = true;
                 for (var i = 0; i < 8 * 8; i++)
                 {
                     var p = Board[i];
                     if (p is not null && p.Black == BlackPlaying)
                     {
                         var r = BullEngine.GetLegalMovesFor((ushort)i, Board, BlackPlaying, EnPassantIndex, true);
-                        if (r.flags is not null && (r.flags & BullEngineFlags.Checkmate) != 0)
+                        if (r.flags is null || (r.flags is not null && (r.flags & BullEngineFlags.Checkmate) == 0))
                         {
-                            isCheckmate = true;
-                            if (isCheck)
-                            {
-                                break;
-                            }
-                        } else if (r.flags is not null)
-                        {
-                            isCheck = true;
-                            break;
+                            r = BullEngine.GetLegalMovesFor((ushort)i, Board, BlackPlaying, EnPassantIndex);
+                            if(r.moves.Count != 0)
+                                isCheckmate = false;
+                            if(r.flags is not null)
+                                isCheck = true;
                         }
                     }
                 }
@@ -254,9 +294,8 @@ namespace localChess.Chess
                 {
                     FlagsList = new() { BlackPlaying ? Flags.BlackInCheck : Flags.WhiteInCheck };
                 }
-                else if (isCheckmate)
+                if (isCheckmate)
                 {
-                    FlagsList = new() { BlackPlaying ? Flags.BlackInCheck : Flags.WhiteInCheck };
                     FlagsList = new() { BlackPlaying ? Flags.BlackInCheckmate : Flags.WhiteInCheckmate };
                 }
             }
@@ -268,7 +307,9 @@ namespace localChess.Chess
                 if (SelectedIndex is null) return;
                 var (x, y) = mbPos.Value;
 
-                if (Program.Network.Communication.IsConnected())
+                if (Program.Network.Communication.IsConnected() &&
+                    (LegalMoves is not null && LegalMoves.Contains(GetIndex(x, y)))
+                    && SelectedIndex.Value != GetIndex(x, y))
                 {
                     Program.Network.Communication.SendPacket(new MovePacket {FromIndex = SelectedIndex.Value, ToIndex = GetIndex(x, y)});
                 }

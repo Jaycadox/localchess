@@ -7,7 +7,7 @@ namespace localChess.Networking
     {
         public string Name { get; set; } = "A localChess user.";
         public bool PrefersBlack { get; set; } = false;
-        public TcpCommunication Communication = new();
+        public Communication Communication = new();
         public string? PlayingAgainst { get; set; } = null;
         public byte[] PublicKey { get; private set; } = { };
         public byte[]? PeerPublicKey { get; set; }
@@ -22,7 +22,7 @@ namespace localChess.Networking
         {
             SentKeys = false;
             PeerPublicKey = null;
-            using var rsa = new RSACryptoServiceProvider();
+            using var rsa = new RSACryptoServiceProvider(1024);
             PublicKey = rsa.ExportRSAPublicKey();
             PrivateKey = rsa.ExportRSAPrivateKey();
         }

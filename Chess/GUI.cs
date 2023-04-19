@@ -1,4 +1,5 @@
-﻿using System.IO.Compression;
+﻿using System.Diagnostics;
+using System.IO.Compression;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Numerics;
@@ -27,7 +28,7 @@ namespace localChess.Chess
         [JsonIgnore]
         public bool FlagHashMismatch;
 
-        private string _opening = "...";
+        private string? _opening = "...";
         private HttpClient? _client;
         private readonly List<string> _moveList = new();
         private List<List<string>> _bestMove = new();
@@ -237,33 +238,43 @@ namespace localChess.Chess
                 }
                 else if(ActiveGame.EngineType == EngineBridge.EngineType.Bull)
                 {
-                    var intMoves = BullEngine.GetLegalMovesFor((ushort)i, selected.Board, selected.BlackPlaying, selected.EnPassantIndex).moves;
-                    if (depth == maxDepth)
+                    var moves = BullEngine.GetLegalMovesFor((ushort)i, selected.Board, selected.BlackPlaying, selected.EnPassantIndex, false);
+                    var intMoves = moves.moves;
+                    if (depth == maxDepth || true)
                     {
                         Parallel.ForEach(intMoves, new ParallelOptions()
                         {
-                            MaxDegreeOfParallelism = 16
-                        },(mv) =>
+                            MaxDegreeOfParallelism = 3
+                        }, (mv) =>
                         {
                             var move = mv.Item1;
                             var game = selected.Copy();
-                            if (!game.PerformMove(move)) return;
+                            EngineBridge.FastBullPerformMove(game, move, intMoves, false);
                             var moveCount = CountMoves(depth - 1, maxDepth, game);
                             Interlocked.Add(ref numPositions, moveCount);
-                            Console.WriteLine(move.ToUci() + @": " + moveCount);
+                            if (depth == maxDepth)
+                                Console.WriteLine(move.ToUci() + @": " + moveCount);
                         });
                     }
-                    else
-                    {
-                        foreach (var move in intMoves)
-                        {
-                            var game = selected.Copy();
-                            if (game.PerformMove(move.Item1))
-                            {
-                                Interlocked.Add(ref numPositions, CountMoves(depth - 1, maxDepth, game));
-                            }
-                        }
-                    }
+                    //else
+                    //{
+                    //    var cBoard = selected.Board.Select(a => a).ToArray();
+                    //    var blackPlaying = selected.BlackPlaying;
+                    //    var enPassantIndex = selected.EnPassantIndex;
+                    //    var didJustEnPassant = selected.DidJustEnPassant;
+                    //    foreach (var move in intMoves)
+                    //    {
+                    //        if (selected.PerformMove(move.Item1))
+                    //        {
+                    //            Interlocked.Add(ref numPositions, CountMoves(depth - 1, maxDepth, selected));
+                    //        }
+                    //
+                    //        selected.Board = cBoard;
+                    //        selected.BlackPlaying = blackPlaying;
+                    //        selected.EnPassantIndex = enPassantIndex;
+                    //        selected.DidJustEnPassant = didJustEnPassant;
+                    //    }
+                    //}
                 }
                 
 
@@ -323,8 +334,10 @@ namespace localChess.Chess
                 var eval = UciEngine.Eval(ActiveGame!);
                 if(eval > -500)
                     _eval = eval + "";
+                
                 _bestMove = UciEngine.GetBestMove(ActiveGame!, PvCount);
-            }).Start();
+
+                }).Start();
 
             if (_moveList.Count > 10) return;
             var uciString = string.Join(",", _moveList);
@@ -337,7 +350,7 @@ namespace localChess.Chess
                     var res = _client!.SendAsync(req).Result.Content.ReadAsStringAsync().Result;
                     try
                     {
-                        _opening = JsonSerializer.Deserialize<JsonObject>(res)!["opening"]!["name"]!.ToString();
+                        _opening = JsonSerializer.Deserialize<JsonObject>(res)!["opening"]?["name"]!.ToString();
                     }
                     catch (JsonException)
                     {
@@ -426,7 +439,7 @@ namespace localChess.Chess
                 ImGui.Text("Turn: " + (ActiveGame.BlackPlaying ? "Black" : "White"));
                 ImGui.Text("Opening: ");
                 ImGui.SameLine();
-                ImGui.Text(_opening);
+                ImGui.Text(_opening ?? "No known opening");
 
                 if (ImGui.IsItemHovered())
                 {
@@ -819,7 +832,13 @@ namespace localChess.Chess
                     ImGui.SliderInt("Check depth", ref CheckDepth, 0, 20);
                     if (ImGui.Button("Check"))
                     {
-                        Console.WriteLine(@"Depth: " + CheckDepth + @", Moves: " + CountMoves(CheckDepth, CheckDepth, ActiveGame.Copy()));
+                        var sw = new Stopwatch();
+                        sw.Start();
+                        var count = CountMoves(CheckDepth, CheckDepth, ActiveGame.Copy());
+                        sw.Stop();
+                        Console.WriteLine(
+                            $@"Depth: {CheckDepth}, Nodes: {count}. Nodes/sec: {count / (sw.ElapsedMilliseconds / 1000.0f)}. {(sw.ElapsedMilliseconds / 1000.0f)} sec.");
+
                     }
                 }
                 if (ImGui.CollapsingHeader("Move history"))

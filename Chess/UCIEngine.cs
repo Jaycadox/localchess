@@ -103,6 +103,10 @@ namespace localChess.Chess
 
                 if (outMoves.Count == 0)
                 {
+                    if (output is null)
+                    {
+                        return GetBestMove(game, pvCount);
+                    }
                     outMoves.Add(new() { output!.Split(" ")[1] });
                 }
                 

@@ -45,9 +45,36 @@ namespace localChess
         public const int SwHide = 0;
         public const int SwShow = 5;
         public static bool ShowGui = true;
-        public const int Size = 720;
+        public static int Size = 720;
         public static Thread? NetworkThread;
 
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19;
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+        private static bool UseImmersiveDarkMode(IntPtr handle, bool enabled)
+        {
+            if (IsWindows10OrGreater(17763))
+            {
+                var attribute = DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1;
+                if (IsWindows10OrGreater(18985))
+                {
+                    attribute = DWMWA_USE_IMMERSIVE_DARK_MODE;
+                }
+
+                int useImmersiveDarkMode = enabled ? 1 : 0;
+                return DwmSetWindowAttribute(handle, (int)attribute, ref useImmersiveDarkMode, sizeof(int)) == 0;
+            }
+
+            return false;
+        }
+
+        private static bool IsWindows10OrGreater(int build = -1)
+        {
+            return Environment.OSVersion.Version.Major >= 10 && Environment.OSVersion.Version.Build >= build;
+        }
         public static void NetworkSetup()
         {
             Network.Communication.OnConnect += (_, _) =>
@@ -138,16 +165,29 @@ namespace localChess
                 ZipFile.ExtractToDirectory("C:\\localChessHelper\\bundle.zip", "C:\\");
             }
 
+            Raylib.SetConfigFlags(ConfigFlags.FLAG_WINDOW_RESIZABLE);
+            Raylib.SetConfigFlags(ConfigFlags.FLAG_MSAA_4X_HINT);
             Raylib.InitWindow(Size * 2, Size, "localChess");
             Raylib.SetExitKey(KeyboardKey.KEY_END);
-            RlImgui.Setup(() => new Vector2(Raylib.GetScreenWidth(), Size));
+            RlImgui.Setup(() => new Vector2(Raylib.GetScreenWidth(), Raylib.GetScreenHeight()));
             
             PieceRenderer.Prepare();
+
+            unsafe
+            {
+                var handle = (IntPtr)Raylib.GetWindowHandle();
+                UseImmersiveDarkMode(handle, true);
+                ShowWindow(handle, SwHide);
+                ShowWindow(handle, SwShow);
+            }
+            
 
             Raylib.SetTargetFPS(60);
             while (!Raylib.WindowShouldClose())
             {
                 Raylib.BeginDrawing();
+                Size = Raylib.GetScreenHeight();
+                
                 if (Raylib.IsKeyPressed(KeyboardKey.KEY_F1))
                 {
                     ShowGui = !ShowGui;
@@ -167,7 +207,7 @@ namespace localChess
                     Gui.Init();
                     Raylib.BeginDrawing();
                 }
-
+                ActiveGame!.DisplaySize = Size;
                 Raylib.ClearBackground(Color.WHITE);
 
                 ActiveGame.OnTick();

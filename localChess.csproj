@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Platforms>AnyCPU;x64</Platforms>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -29,7 +30,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Raylib-cs" Version="4.2.0.2" />
+    <PackageReference Include="BinaryPack" Version="1.0.3" />
+    <PackageReference Include="Raylib-cs" Version="4.5.0" />
     <PackageReference Include="RayWork.RLImgui" Version="0.1.0" />
     <PackageReference Include="System.Text.Json" Version="7.0.2" />
   </ItemGroup>
@@ -47,6 +49,10 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Networking\NewFolder\" />
   </ItemGroup>
 
 </Project>

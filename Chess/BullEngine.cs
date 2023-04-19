@@ -1,4 +1,7 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Collections.Concurrent;
+using Raylib_cs;
+using System.Runtime.CompilerServices;
+using System.Transactions;
 
 namespace localChess.Chess
 {
@@ -189,11 +192,6 @@ namespace localChess.Chess
                 }
             }
 
-            if (pieceMoves.Count == 0)
-            {
-                Console.WriteLine(@"checkmate 1");
-            }
-
             var checkMate = false;
 
             if (inCheck)
@@ -212,68 +210,70 @@ namespace localChess.Chess
                 }
 
             }
-
             return (pieceMoves[index].Select(x => (new Move(index, x.Key), x.Value)).ToList(), flags);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
+        private static (bool moved, bool intersecting) AddCapturingMove(ref Piece?[] board, bool onlyCareAboutCheck, ref uint? flags, Dictionary<ushort, List<Move>> moves, int from, int to, bool canCapture = true, bool forcedCapture = false)
+        {
+            
+            if (onlyCareAboutCheck)
+            {
+                if (0 > from || 0 > to || 8 * 8 <= from || 8 * 8 <= to) return (false, false);
+                var toPiece_ = board[to];
+                var fromPiece_ = board[from];
+                if (toPiece_ is null || toPiece_.Black == fromPiece_!.Black) return (false, toPiece_ is not null);
+                if (toPiece_.Type == PieceType.King)
+                {
+                    flags ??= 0;
+                    flags |= toPiece_.Black ? BullEngineFlags.Black : BullEngineFlags.White;
+                    return (false, true);
+                }
+
+                return (true, true);
+            }
+            if (!canCapture && onlyCareAboutCheck)
+            {
+                return (false, false);
+            }
+            
+            if (0 > from || 0 > to || 8 * 8 <= from || 8 * 8 <= to) return (false, false);
+            var toPiece = board[to];
+            var fromPiece = board[from];
+            var inter = toPiece is not null;
+            if (fromPiece is null) return (false, inter);
+            if (toPiece is not null && toPiece.Black == fromPiece.Black) return (false, inter);
+            if (toPiece is not null && toPiece.Type == PieceType.King && toPiece.Black != fromPiece.Black)
+            {
+                flags ??= 0;
+                flags |= toPiece.Black ? BullEngineFlags.Black : BullEngineFlags.White;
+                return (false, true);
+            }
+
+            if (!canCapture && inter) return (false, inter);
+            if (forcedCapture && !inter)
+            {
+                return (false, inter);
+            }
+
+            if (!onlyCareAboutCheck)
+            {
+                moves.Add((ushort)to, new() { new(from, to) });
+            }
+            else
+            {
+                moves.Add((ushort)to, new());
+            }
+
+            return (true, inter);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
         private static (Dictionary<ushort, List<Move>> moves, ushort? flags) InternalLegalMovesFor(ushort index, Piece?[] board, bool onlyCareAboutCheck = false)
         {
-            Dictionary<ushort, List<Move>> moves = new();
+            Dictionary<ushort, List<Move>> moves = new(10);
 
             uint? flags = null;
-
-            [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
-            (bool moved, bool intersecting) AddCapturingMove(int from, int to, bool canCapture = true, bool forcedCapture = false)
-            {
-                if (onlyCareAboutCheck)
-                {
-                    if (0 > from || 0 > to) return (false, false);
-                    if (8 * 8 <= from || 8 * 8 <= to || board[to] is null || board[to]?.Black == board[from]!.Black) return (false, board[to] is not null);
-                    if (board[to]!.Type == PieceType.King)
-                    {
-                        flags ??= 0;
-                        flags |= board[to]!.Black ? BullEngineFlags.Black : BullEngineFlags.White;
-                        return (false, true);
-                    }
-                    else
-                    {
-                        return (true, true);
-                    }
-                }
-                if (!canCapture && onlyCareAboutCheck)
-                {
-                    return (false, false);
-                }
-                if (0 > from || 0 > to) return (false, false);
-                if (8 * 8 <= from || 8 * 8 <= to) return (false, false);
-                var inter = board[to] is not null;
-                if (board[from] is null) return (false, inter);
-                if (board[to] is not null && board[to]!.Black == board[from]!.Black) return (false, inter);
-                if (board[to] is not null && board[to]!.Type == PieceType.King && board[to]!.Black != board[from]!.Black)
-                {
-                    flags ??= 0;
-                    flags |= board[to]!.Black ? BullEngineFlags.Black : BullEngineFlags.White;
-                    return (false, true);
-                }
-
-                if (!canCapture && inter) return (false, inter);
-                if (forcedCapture && !inter)
-                {
-                    return (false, inter);
-                }
-
-                if (!onlyCareAboutCheck)
-                {
-                    moves.Add((ushort)to, new() { new(from, to) });
-                }
-                else
-                {
-                    moves.Add((ushort)to, new());
-                }
-                
-                return (true, inter);
-            }
 
             var piece = board[index];
             if (piece == null)
@@ -289,35 +289,35 @@ namespace localChess.Chess
             {
                 case PieceType.Pawn when !black:
                 {
-                    if (AddCapturingMove(index, Game.GetIndex(x, y - 1), false).moved && y == 6)
+                    if (AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x, y - 1), false).moved && y == 6)
                     {
-                        AddCapturingMove(index, Game.GetIndex(x, y - 2), false);
+                        AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x, y - 2), false);
                     }
                     
-                    AddCapturingMove(index, Game.GetIndex(x + 1, y - 1), true, true);
-                    AddCapturingMove(index, Game.GetIndex(x - 1, y - 1), true, true);
+                    AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x + 1, y - 1), true, true);
+                    AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x - 1, y - 1), true, true);
                     break;
                 }
                 case PieceType.Pawn:
                 {
-                    if (AddCapturingMove(index, Game.GetIndex(x, y + 1), false).moved && y == 1)
+                    if (AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x, y + 1), false).moved && y == 1)
                     {
-                        AddCapturingMove(index, Game.GetIndex(x, y + 2), false);
+                        AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x, y + 2), false);
                     }
                     
-                    AddCapturingMove(index, Game.GetIndex(x + 1, y + 1), true, true);
-                    AddCapturingMove(index, Game.GetIndex(x - 1, y + 1), true, true);
+                    AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x + 1, y + 1), true, true);
+                    AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x - 1, y + 1), true, true);
                     break;
                 }
                 case PieceType.Knight:
-                    AddCapturingMove(index, Game.GetIndex(x + 1, y + 2));
-                    AddCapturingMove(index, Game.GetIndex(x - 1, y + 2));
-                    AddCapturingMove(index, Game.GetIndex(x + 1, y - 2));
-                    AddCapturingMove(index, Game.GetIndex(x - 1, y - 2));
-                    AddCapturingMove(index, Game.GetIndex(x + 2, y - 1));
-                    AddCapturingMove(index, Game.GetIndex(x + 2, y + 1));
-                    AddCapturingMove(index, Game.GetIndex(x - 2, y - 1));
-                    AddCapturingMove(index, Game.GetIndex(x - 2, y + 1));
+                    AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x + 1, y + 2));
+                    AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x - 1, y + 2));
+                    AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x + 1, y - 2));
+                    AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x - 1, y - 2));
+                    AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x + 2, y - 1));
+                    AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x + 2, y + 1));
+                    AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x - 2, y - 1));
+                    AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x - 2, y + 1));
                     break;
                 case PieceType.Rook or PieceType.Bishop or PieceType.Queen or PieceType.King:
                 {
@@ -343,42 +343,42 @@ namespace localChess.Chess
 
                     for (var i = 1; i < (piece.Type == PieceType.King ? 2 : 8); i++)
                     {
-                        if ((hitMask & dDown) != 0 && AddCapturingMove(index, Game.GetIndex(x, y + i)).intersecting)
+                        if ((hitMask & dDown) != 0 && AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x, y + i)).intersecting)
                         {
                             hitMask &= dDown ^ ushort.MaxValue;
                         }
 
-                        if ((hitMask & dUp) != 0 && AddCapturingMove(index, Game.GetIndex(x, y - i)).intersecting)
+                        if ((hitMask & dUp) != 0 && AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x, y - i)).intersecting)
                         {
                             hitMask &= dUp ^ ushort.MaxValue;
                         }
 
-                        if ((hitMask & dLeft) != 0 && AddCapturingMove(index, Game.GetIndex(x - i, y)).intersecting)
+                        if ((hitMask & dLeft) != 0 && AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x - i, y)).intersecting)
                         {
                             hitMask &= dLeft ^ ushort.MaxValue;
                         }
 
-                        if ((hitMask & dRight) != 0 && AddCapturingMove(index, Game.GetIndex(x + i, y)).intersecting)
+                        if ((hitMask & dRight) != 0 && AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x + i, y)).intersecting)
                         {
                             hitMask &= dRight ^ ushort.MaxValue;
                         }
 
-                        if ((hitMask & dLeftDown) != 0 && AddCapturingMove(index, Game.GetIndex(x - i, y + i)).intersecting)
+                        if ((hitMask & dLeftDown) != 0 && AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x - i, y + i)).intersecting)
                         {
                             hitMask &= dLeftDown ^ ushort.MaxValue;
                         }
 
-                        if ((hitMask & dLeftUp) != 0 && AddCapturingMove(index, Game.GetIndex(x - i, y - i)).intersecting)
+                        if ((hitMask & dLeftUp) != 0 && AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x - i, y - i)).intersecting)
                         {
                             hitMask &= dLeftUp ^ ushort.MaxValue;
                         }
 
-                        if ((hitMask & dRightDown) != 0 && AddCapturingMove(index, Game.GetIndex(x + i, y + i)).intersecting)
+                        if ((hitMask & dRightDown) != 0 && AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x + i, y + i)).intersecting)
                         {
                             hitMask &= dRightDown ^ ushort.MaxValue;
                         }
 
-                        if ((hitMask & dRightUp) != 0 && AddCapturingMove(index, Game.GetIndex(x + i, y - i)).intersecting)
+                        if ((hitMask & dRightUp) != 0 && AddCapturingMove(ref board, onlyCareAboutCheck, ref flags, moves, index, Game.GetIndex(x + i, y - i)).intersecting)
                         {
                             hitMask &= dRightUp ^ ushort.MaxValue;
                         }

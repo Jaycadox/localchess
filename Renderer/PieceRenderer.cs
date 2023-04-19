@@ -45,10 +45,10 @@ namespace localChess.Renderer
             var sheetX = (int)Type * 90;
             var sheetY = Black ? 90 : 0;
 
-            Raylib.DrawTextureTiled(PieceSpritesheet,
+            Raylib.DrawTexturePro(PieceSpritesheet,
                 new Rectangle(sheetX, sheetY, 90, 90),
                 new Rectangle(x, y, pieceScale, pieceScale),
-                Vector2.Zero, 0, pieceScale / 90.0f, new Color(255, 255, 255, (int)(255.0f * alpha)));
+                Vector2.Zero, 0, new Color(255, 255, 255, (int)(255.0f * alpha)));
         }
 
         public void Render(int x, int y)

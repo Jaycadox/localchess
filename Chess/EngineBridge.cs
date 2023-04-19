@@ -1,4 +1,6 @@
-﻿namespace localChess.Chess
+﻿using System.Runtime.CompilerServices;
+
+namespace localChess.Chess
 {
     internal class EngineBridge
     {
@@ -73,6 +75,69 @@
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public static void FastBullPerformMove(Game game, Move move, List<(Move, List<Move> moves)> moves, bool animations)
+        {
+            game.Board = game.Board.Select(a => a).ToArray();
+            foreach (var mv in moves)
+            {
+                var (pMove, moveList) = mv;
+                if (move.FromIndex != pMove.FromIndex || move.ToIndex != pMove.ToIndex) continue;
+                if (game.Board[move.FromIndex]!.Type == PieceType.Pawn && Math.Abs(move.FromIndex - move.ToIndex) > 10)
+                {
+                    game.EnPassantIndex = move.ToIndex;
+                }
+                else
+                {
+                    game.EnPassantIndex = null;
+                }
+
+                ++game.HalfMoveClock;
+                if (game.Board[move.FromIndex]!.Type == PieceType.Pawn)
+                {
+                    game.HalfMoveClock = 0;
+                    if (move.ToIndex is < 8 or >= 56)
+                    {
+                        game.Board[move.FromIndex]!.Type = move.PromoteInto;
+                        move.WasPromoted = true;
+                    }
+                }
+
+                foreach (var mv1 in moveList)
+                {
+                    game.Board[mv1.FromIndex]!.MoveCount++;
+                    if (animations && game.Board[mv1.ToIndex] is not null)
+                    {
+                        if (game.FadeOuts.ContainsKey(mv1.ToIndex))
+                        {
+                            game.FadeOuts.Remove(mv1.ToIndex);
+                        }
+                        game.FadeOuts.Add(mv1.ToIndex, (game.Board[mv1.ToIndex]!.Clone(), 1.0f));
+                    }
+
+                    game.Board[mv1.ToIndex] = game.Board[mv1.FromIndex];
+                    game.Board[mv1.FromIndex] = null;
+                    if (animations)
+                    {
+                        if(game.Animations.ContainsKey(mv1.ToIndex))
+                            game.Animations.Remove(mv1.ToIndex);
+                        game.Animations.Add(mv1.ToIndex, (mv1.FromIndex, 0.0f));
+
+                    }
+                }
+
+                game.LegalMoves = null;
+                game.BlackPlaying = !game.BlackPlaying;
+                game.FlagsList = null;
+                if (!game.BlackPlaying)
+                {
+                    ++game.FullMoves;
+                }
+                break;
+            }
+
+            
+        }
         public static void PerformMove(Game game, Move move, EngineType engineType)
         {
             switch (engineType)
@@ -143,70 +208,8 @@
                 }
                 case EngineType.Bull:
                 {
-                    var nb = game.Board.Select(a => a?.Clone()).ToArray();
-                    for (var i = 0; i < 1; i++)
-                    {
-                        game.Board = nb.Select(a => a?.Clone()).ToArray();
-                        var result = BullEngine.GetLegalMovesFor((ushort)move.FromIndex, game.Board, game.BlackPlaying, game.EnPassantIndex);
-
-                        foreach (var mv in result.moves)
-                        {
-                            var (pMove, moveList) = mv;
-                            if (move.FromIndex != pMove.FromIndex || move.ToIndex != pMove.ToIndex) continue;
-                            if (game.Board[move.FromIndex]!.Type == PieceType.Pawn && Math.Abs(move.FromIndex - move.ToIndex) > 10)
-                            {
-                                game.EnPassantIndex = move.ToIndex;
-                            }
-                            else
-                            {
-                                game.EnPassantIndex = null;
-                            }
-
-                            ++game.HalfMoveClock;
-                            if (game.Board[move.FromIndex]!.Type == PieceType.Pawn)
-                            {
-                                game.HalfMoveClock = 0;
-                                if (move.ToIndex is < 8 or >= 56)
-                                {
-                                    game.Board[move.FromIndex]!.Type = move.PromoteInto;
-                                    move.WasPromoted = true;
-                                }
-                            }
-
-                            foreach (var mv1 in moveList)
-                            {
-                                game.Board[mv1.FromIndex]!.MoveCount++;
-                                if (game.Board[mv1.ToIndex] is not null)
-                                {
-                                    if (game.FadeOuts.ContainsKey(mv1.ToIndex))
-                                    {
-                                        game.FadeOuts.Remove(mv1.ToIndex);
-                                    }
-                                    game.FadeOuts.Add(mv1.ToIndex, (game.Board[mv1.ToIndex]!.Clone(), 1.0f));
-                                }
-
-                                game.Board[mv1.ToIndex] = game.Board[mv1.FromIndex];
-                                game.Board[mv1.FromIndex] = null;
-                                if (game.Animations.ContainsKey(mv1.ToIndex))
-                                {
-                                    game.Animations.Remove(mv1.ToIndex);
-                                }
-                                game.Animations.Add(mv1.ToIndex, (mv1.FromIndex, 0.0f));
-                            }
-
-                            game.LegalMoves = null;
-                            game.SpecialMoves = null;
-                            game.BlackPlaying = !game.BlackPlaying;
-                            if (!game.BlackPlaying)
-                            {
-                                ++game.FullMoves;
-                            }
-                            game.FlagsList = null;
-                            break;
-                        }
-
-                    }
-
+                    var res = BullEngine.GetLegalMovesFor((ushort)move.FromIndex, game.Board, game.BlackPlaying, game.EnPassantIndex);
+                    FastBullPerformMove(game, move, res.moves, true);
                     break;
                 }
             }
