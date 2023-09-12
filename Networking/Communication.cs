@@ -15,7 +15,7 @@ namespace localChess.Networking
         public event EventHandler<Game>? OnConnect;
         public event EventHandler<Game>? OnDisconnect;
         public bool Host;
-        public TcpCommunication Protocol = new();
+        public static ICommunication Protocol = new TcpCommunication();
 
         public void StartServer(int port)
         {

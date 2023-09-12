@@ -20,14 +20,18 @@ namespace localChess.Networking.Communications
         {
             _listener = new TcpListener(IPAddress.Any, port);
             _listener.Start();
+            Console.WriteLine("Waiting for client...");
             _client = _listener.AcceptTcpClient();
+            Console.WriteLine("Got client");
+
         }
 
         public void ConnectToServer(string ipAddress, int port)
         {
             _client = new TcpClient();
+            Console.WriteLine($"Attempting to connect to {ipAddress}:{port}");
             _client.Connect(ipAddress, port);
-
+            Console.WriteLine("Connected");
         }
 
         public void SendData(byte[] dataToSend)

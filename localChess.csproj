@@ -31,6 +31,8 @@
 
   <ItemGroup>
     <PackageReference Include="BinaryPack" Version="1.0.3" />
+    <PackageReference Include="ENet-CSharp" Version="2.4.8" />
+    <PackageReference Include="Mono.Nat" Version="3.0.4" />
     <PackageReference Include="Raylib-cs" Version="4.5.0" />
     <PackageReference Include="RayWork.RLImgui" Version="0.1.0" />
     <PackageReference Include="System.Text.Json" Version="7.0.2" />
@@ -49,10 +51,6 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Networking\NewFolder\" />
   </ItemGroup>
 
 </Project>

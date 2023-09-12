@@ -172,7 +172,7 @@ namespace localChess
             RlImgui.Setup(() => new Vector2(Raylib.GetScreenWidth(), Raylib.GetScreenHeight()));
             
             PieceRenderer.Prepare();
-
+            ENet.Library.Initialize();
             unsafe
             {
                 var handle = (IntPtr)Raylib.GetWindowHandle();
@@ -232,7 +232,7 @@ namespace localChess
             }
 
             ShowWindow(Program.GetConsoleWindow(), Program.SwShow);
-
+            ENet.Library.Deinitialize();
             Gui?.SaveToJson();
             Network.Communication.Stop();
             RlImgui.Shutdown();

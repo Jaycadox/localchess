@@ -8,6 +8,8 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using ImGuiNET;
 using localChess.Networking;
+using localChess.Networking.Communications;
+using Mono.Nat;
 using Raylib_CsLo;
 
 namespace localChess.Chess
@@ -103,6 +105,24 @@ namespace localChess.Chess
         public int MouseOpacity;
         [JsonInclude]
         public bool BroadcastMousePos;
+        [JsonInclude]
+        public string ProxyLogin = "";
+        [JsonInclude]
+        public bool UseProxyConfig = false;
+        [JsonIgnore]
+        public string InpProxyLogin = "";
+        [JsonInclude]
+        public bool UseJoinBroker = false;
+        [JsonInclude]
+        public string JoinBrokerAddress = "";
+        [JsonIgnore]
+        public int BrokerStage = 0;
+        [JsonIgnore]
+        public bool BrokerHasJoinCode = false;
+        [JsonIgnore]
+        public bool TestingBroker = false;
+        [JsonIgnore]
+        public int BrokerTestResult = 0;
 
         public void PostRender()
         {
@@ -314,16 +334,47 @@ namespace localChess.Chess
                 Path = "C:\\localChess\\stockfish_15.1_win_x64_avx2\\stockfish-windows-2022-x86-64-avx2.exe";
             }
 
-            var handler = new HttpClientHandler();
-            handler.DefaultProxyCredentials = CredentialCache.DefaultCredentials;
-            _client = new(handler);
+            WebProxy? proxy = null;
+            if (ProxyLogin.Length != 0 && UseProxyConfig)
+            {
+                var parts = Base64Decode(ProxyLogin).Split("|");
+                var (url, user, pass) = (parts[0], parts[1], parts[2]);
+                proxy = new WebProxy
+                {
+                    Address = new Uri(url),
+                    BypassProxyOnLocal = false,
+                    UseDefaultCredentials = false,
+                    Credentials = new NetworkCredential(
+                        userName: user,
+                        password: pass)
+                };
+            }
 
-            ActiveGame!.OnMove += (_, move) =>
+            var handler = new HttpClientHandler
+            {
+                Proxy = proxy,
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            };
+            _client = new(handler: handler, disposeHandler: true);
+
+            Program.ActiveGame!.OnMove += (_, move) =>
             {
                 _moveList.Add(move.ToUci());
                 EvaluateMove();
             };
 
+        }
+
+        private string Base64Encode(string plainText)
+        {
+            var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(plainText);
+            return System.Convert.ToBase64String(plainTextBytes);
+        }
+
+        private string Base64Decode(string base64EncodedData)
+        {
+            var base64EncodedBytes = System.Convert.FromBase64String(base64EncodedData);
+            return System.Text.Encoding.UTF8.GetString(base64EncodedBytes);
         }
 
         private void EvaluateMove()
@@ -342,6 +393,7 @@ namespace localChess.Chess
             if (_moveList.Count > 10) return;
             var uciString = string.Join(",", _moveList);
             _opening = "...";
+            
             new Thread(() =>
             {
                 try
@@ -400,6 +452,8 @@ namespace localChess.Chess
                 _frameCount = 0;
                 SaveToJson();
             }
+
+            
 
             //ImGui.GetFont().Scale = 1.8f;
             if (ShowEvalBar)
@@ -485,7 +539,7 @@ namespace localChess.Chess
                     ImGui.Text("Last engine time: " + ActiveGame.LastElapsedTicks + " ticks.");
                 }
                 ActiveGame.EngineType = EngineTypes[SelectedEngine];
-                if (!Program.Network.Communication.IsConnected() && ImGui.CollapsingHeader("Stockfish", ImGuiTreeNodeFlags.DefaultOpen))
+                if (ImGui.CollapsingHeader("Stockfish", ImGuiTreeNodeFlags.DefaultOpen))
                 {
                     var bestMove = "";
                     if (moveSelected < 0)
@@ -501,7 +555,7 @@ namespace localChess.Chess
                     ImGui.SameLine();
                     if (flatBestMoves.Count > 0)
                     {
-                        if (ImGui.Button("Perform"))
+                        if (!Program.Network.Communication.IsConnected() && ImGui.Button("Perform"))
                         {
                             try
                             {
@@ -600,8 +654,16 @@ namespace localChess.Chess
 
                     ImGui.SliderInt("Play n'th move", ref NthBestMove, 1, Depth * PvCount);
                     ImGui.Checkbox("Hide best-move", ref HideBestMove);
+                    if (Program.Network.Communication.IsConnected())
+                    {
+                        HideBestMove = true;
+                    }
                     ImGui.SameLine();
                     ImGui.Checkbox("Auto-perform", ref AutoPerform);
+                    if (Program.Network.Communication.IsConnected())
+                    {
+                        AutoPerform = false;
+                    }
                     ImGui.SameLine();
                     if (ImGui.Button("Force re-evaluate", new Vector2(ImGui.GetContentRegionAvail().X, 18)))
                     {
@@ -631,7 +693,7 @@ namespace localChess.Chess
 
                 if (ImGui.CollapsingHeader("Networking"))
                 {
-                    if (!Program.Network.Communication.IsConnected())
+                    if (!Program.Network.Communication.IsConnected() && BrokerStage == 0)
                     {
                         ImGui.InputText("Username", ref CfgName, 64);
                         Program.Network.Name = CfgName;
@@ -642,20 +704,38 @@ namespace localChess.Chess
                         ImGui.Separator();
                         if (ImGui.Button("Generate join code"))
                         {
-                            var ip = GetLocalIPv4Address()!.ToString().Split(".");
-                            var code = ip[3].PadLeft(3, '0') + ip[2];
-                            _joinCode = code;
-                            Program.StartServer(80);
+                            if (!UseJoinBroker)
+                            {
+                                var ip = GetLocalIPv4Address()!.ToString().Split(".");
+                                var code = ip[3].PadLeft(3, '0') + ip[2];
+                                _joinCode = code;
+                                Program.StartServer(80);
+                            }
+                            else
+                            {
+                                BrokerHasJoinCode = false;
+                                BrokerStage = 1;
+                            }
+                            
                         }
 
                         ImGui.InputInt("Join code", ref _inputJoinCode);
                         ImGui.SameLine();
                         if (ImGui.Button("Join"))
                         {
-                            var ip = GetLocalIPv4Address()!.ToString().Split(".");
-                            var beginIp = ip[0] + "." + ip[1] + "." + _inputJoinCode.ToString()[3..] + "." + _inputJoinCode.ToString()[..3].TrimStart('0');
-                            Console.WriteLine(beginIp);
-                            Program.Connect(beginIp, 80);
+                            if (!UseJoinBroker)
+                            {
+                                var ip = GetLocalIPv4Address()!.ToString().Split(".");
+                                var beginIp = ip[0] + "." + ip[1] + "." + _inputJoinCode.ToString()[3..] + "." + _inputJoinCode.ToString()[..3].TrimStart('0');
+                                Console.WriteLine(beginIp);
+                                Program.Connect(beginIp, 80);
+                            }
+                            else
+                            {
+                                BrokerHasJoinCode = true;
+                                BrokerStage = 1;
+                            }
+                            
                         }
                         ImGui.Separator();
                         ImGui.Text("Advanced networking");
@@ -678,6 +758,188 @@ namespace localChess.Chess
                         if (ImGui.Button("Start server"))
                         {
                             Program.StartServer(CfgPort);
+                        }
+                        ImGui.Separator();
+                        ImGui.Text("Join broker");
+                        if (ImGui.IsItemHovered())
+                        {
+                            ImGui.SetTooltip(
+                                "A join broker is needed for join codes to work when connecting peers in different networks.");
+                        }
+                        ImGui.Separator();
+                        ImGui.InputText("Broker host", ref JoinBrokerAddress, 64);
+                        ImGui.SameLine();
+                        ImGui.Checkbox("Use broker", ref UseJoinBroker);
+                        if (!TestingBroker && ImGui.Button("Test broker"))
+                        {
+                            TestingBroker = true;
+                            BrokerTestResult = 0;
+                            new Thread(() =>
+                            {
+                                try
+                                {
+                                    HttpRequestMessage req = new(HttpMethod.Get, $"http://{JoinBrokerAddress}/ping");
+                                    var res = _client!.SendAsync(req).Result.Content.ReadAsStringAsync().Result;
+                                    var body = JsonSerializer.Deserialize<JsonObject>(res)!["body"]!.ToString();
+                                    if (body == "localChess broker")
+                                    {
+                                        BrokerTestResult = 2;
+                                    }
+                                }
+                                catch (Exception)
+                                {
+                                    BrokerTestResult = 1;
+                                }
+                                TestingBroker = false;
+                            }).Start();
+                        }
+
+                        if(!TestingBroker)
+                            ImGui.SameLine();
+
+                        if (BrokerTestResult != 0)
+                        {
+                            switch (BrokerTestResult)
+                            {
+                                case 1:
+                                    ImGui.Text("Failed -- invalid broker");
+                                    break;
+                                case 2:
+                                    ImGui.Text("Passed -- valid broker");
+                                    break;
+                            }
+                        } else if (BrokerTestResult == 0 && TestingBroker)
+                        {
+                            ImGui.Text("Testing...");
+                        }
+
+                        ImGui.Separator();
+                        ImGui.Text("Proxy configuration");
+                        ImGui.Separator();
+                        ImGui.InputText("Proxy configuration", ref InpProxyLogin, 64);
+                        ImGui.SameLine();
+                        if (ImGui.Button("Save"))
+                        {
+                            ProxyLogin = Base64Encode(InpProxyLogin);
+                        }
+                        ImGui.Text("Format: PROXY_URL|PROXY_USER|PROXY_PASS");
+                        ImGui.Checkbox("Use proxy configuration", ref UseProxyConfig);
+
+                    }
+                    else if (BrokerStage != 0)
+                    {
+                        ImGui.Separator();
+                        ImGui.Text("Join broker");
+                        ImGui.Separator();
+                        if (BrokerStage == 1 && !BrokerHasJoinCode)
+                        {
+                            BrokerStage = 2;
+                            Program.Network.Communication.Stop();
+                            new Thread(() =>
+                            {
+                                HttpRequestMessage req = new(HttpMethod.Get, $"http://{JoinBrokerAddress}/generate");
+                                var res = _client!.SendAsync(req).Result.Content.ReadAsStringAsync().Result;
+                                try
+                                {
+                                    _joinCode = JsonSerializer.Deserialize<JsonObject>(res)!["code"]?.ToString();
+                                    Console.WriteLine("got code: " + _joinCode);
+                                    if (!PortForward())
+                                    {
+                                        Console.WriteLine("Port forward failed");
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine("Created uPnP port forward");
+                                    }
+                                    BrokerStage = 3;
+                                }
+                                catch (JsonException)
+                                {
+                                    Program.Network.Communication.Stop();
+                                    BrokerStage = 0;
+                                }
+                            }).Start();
+                        }
+                        else if(BrokerStage == 1)
+                        {
+                            _joinCode = _inputJoinCode.ToString();
+                            BrokerStage = 3;
+                        }
+
+                        if (BrokerStage is >= 1 and <= 2)
+                        {
+                            ImGui.Text("Port forwarding & generating join code...");
+                        }
+
+                        string peer = "";
+                        if (BrokerStage == 3)
+                        {
+                            BrokerStage = 4;
+                            new Thread(() =>
+                            {
+                                while (BrokerStage == 4)
+                                {
+                                    HttpRequestMessage req = new(HttpMethod.Get, $"http://{JoinBrokerAddress}/join?code=" + _joinCode + "&server=" + (!BrokerHasJoinCode).ToString().ToLower());
+                                    var pRes = _client!.SendAsync(req).Result;
+                                    var res = pRes.Content.ReadAsStringAsync().Result;
+                                    if (pRes.StatusCode == HttpStatusCode.NotFound)
+                                    {
+                                        BrokerStage = 0;
+                                        Console.WriteLine("Invalid join code");
+                                    }
+                                    try
+                                    {
+                                        var jpeer = JsonSerializer.Deserialize<JsonObject>(res)!["peer"];
+                                        if (jpeer is null)
+                                        {
+                                            Thread.Sleep(150);
+                                            continue;
+                                        }
+
+                                        peer = jpeer.ToString();
+                                        Console.WriteLine("Got peer: " + peer);
+                                        
+                                        if (!BrokerHasJoinCode)
+                                        {
+                                            Program.StartServer(9191);
+                                        }
+                                        else
+                                        {
+                                            Program.Connect(peer, 9191);
+                                        }
+                                        BrokerStage = 5;
+                                        break;
+                                    }
+                                    catch (JsonException)
+                                    {
+                                        Program.Network.Communication.Stop();
+                                        BrokerStage = 0;
+                                        break;
+                                    }
+                                }
+                            }).Start();
+                        }
+
+                        if (BrokerStage is >= 3 and <= 4)
+                        {
+                            ImGui.Text($"Join code: {_joinCode}. Waiting...");
+                        }
+
+                        if (BrokerStage == 5)
+                        {
+                            BrokerStage = 0;
+                        }
+
+                        if (ImGui.Button("Stop"))
+                        {
+                            BrokerStage = 0;
+                            Program.Network.Communication.Stop();
+                        }
+
+                        ImGui.SameLine();
+                        if (_joinCode is not null && _joinCode.Length != 0 && ImGui.Button("Copy to clipboard"))
+                        {
+                            Raylib.SetClipboardText(_joinCode);
                         }
                     }
                     else
@@ -965,6 +1227,46 @@ namespace localChess.Chess
                 }
             }
 
+        }
+
+        private static bool PortForwarded = false;
+        public static bool PortForward()
+        {
+            if (PortForwarded == true)
+            {
+                return true;
+            }
+
+            int portToForward = 9191;
+
+            bool portMapSet = false;
+            bool fail = false;
+
+            NatUtility.DeviceFound += (object sender, DeviceEventArgs args) =>
+            {
+                try
+                {
+                    INatDevice device = args.Device;
+                    device.CreatePortMap(new Mapping(Protocol.Tcp, portToForward, portToForward, 0, "localChess"));
+                    portMapSet = true;
+
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    fail = true;
+                }
+            };
+
+            NatUtility.StartDiscovery();
+
+            while (true)
+            {
+                if (portMapSet || fail) break;
+                Thread.Sleep(1);
+            }
+            PortForwarded = !fail;
+            return !fail;
         }
     }
 }

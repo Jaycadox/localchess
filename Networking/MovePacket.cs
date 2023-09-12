@@ -17,7 +17,7 @@ namespace localChess.Networking
             var p = game.Board[FromIndex];
             if (p is not null && (game.LockedColour == null || p.Black == !game.LockedColour))
             {
-                game.PerformMove(new Move(FromIndex, ToIndex));
+                Program.ActiveGame?.PerformMove(new Move(FromIndex, ToIndex));
             }
         }
     }
